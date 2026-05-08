@@ -1,0 +1,17 @@
+{
+  "hermes_version": "0.11.0",
+  "patch_version": "0.11",
+  "generated_from": "31f70d1f2a9d1ae41ac5c93e1fba734171442973",
+  "source_remote": "https://github.com/NousResearch/hermes-agent.git",
+  "source_ref": "main",
+  "files": [
+    "hermes_cli/setup.py",
+    "hermes_cli/tools_config.py",
+    "hermes_cli/gateway.py",
+    "hermes_cli/main.py",
+    "hermes_cli/auth.py",
+    "hermes_cli/config.py",
+    "setup-hermes.sh",
+    "hermes_cli/zh_patch.py"
+  ]
+}

@@ -1,0 +1,2695 @@
+﻿diff --git a/hermes_cli/config.py b/hermes_cli/config.py
+index cdb53fd..bb16c20 100644
+--- a/hermes_cli/config.py
++++ b/hermes_cli/config.py
+@@ -4494,23 +4494,25 @@ def redact_key(key: str) -> str:
+ 
+ def show_config():
+     """Display current configuration."""
++    from hermes_cli.zh_patch import zh
++
+     config = load_config()
+     
+     print()
+     print(color("┌─────────────────────────────────────────────────────────┐", Colors.CYAN))
+-    print(color("│              ⚕ Hermes Configuration                    │", Colors.CYAN))
++    print(color("│              ⚕ Hermes 配置                             │", Colors.CYAN))
+     print(color("└─────────────────────────────────────────────────────────┘", Colors.CYAN))
+     
+     # Paths
+     print()
+-    print(color("◆ Paths", Colors.CYAN, Colors.BOLD))
+-    print(f"  Config:       {get_config_path()}")
+-    print(f"  Secrets:      {get_env_path()}")
+-    print(f"  Install:      {get_project_root()}")
++    print(color(f"◆ {zh('Paths')}", Colors.CYAN, Colors.BOLD))
++    print(f"  {zh('Config:'):<12} {get_config_path()}")
++    print(f"  {zh('Secrets:'):<12} {get_env_path()}")
++    print(f"  {zh('Install:'):<12} {get_project_root()}")
+     
+     # API Keys
+     print()
+-    print(color("◆ API Keys", Colors.CYAN, Colors.BOLD))
++    print(color(f"◆ {zh('API Keys')}", Colors.CYAN, Colors.BOLD))
+     
+     keys = [
+         ("OPENROUTER_API_KEY", "OpenRouter"),
+@@ -4533,29 +4535,29 @@ def show_config():
+     
+     # Model settings
+     print()
+-    print(color("◆ Model", Colors.CYAN, Colors.BOLD))
+-    print(f"  Model:        {config.get('model', 'not set')}")
+-    print(f"  Max turns:    {config.get('agent', {}).get('max_turns', DEFAULT_CONFIG['agent']['max_turns'])}")
++    print(color(f"◆ {zh('Model')}", Colors.CYAN, Colors.BOLD))
++    print(f"  {zh('Model:'):<12} {config.get('model', zh('not set'))}")
++    print(f"  {zh('Max turns:'):<12} {config.get('agent', {}).get('max_turns', DEFAULT_CONFIG['agent']['max_turns'])}")
+     
+     # Display
+     print()
+-    print(color("◆ Display", Colors.CYAN, Colors.BOLD))
++    print(color(f"◆ {zh('Display')}", Colors.CYAN, Colors.BOLD))
+     display = config.get('display', {})
+-    print(f"  Personality:  {display.get('personality', 'kawaii')}")
+-    print(f"  Reasoning:    {'on' if display.get('show_reasoning', False) else 'off'}")
+-    print(f"  Bell:         {'on' if display.get('bell_on_complete', False) else 'off'}")
++    print(f"  {zh('Personality:'):<12} {display.get('personality', 'kawaii')}")
++    print(f"  {zh('Reasoning:'):<12} {zh('on') if display.get('show_reasoning', False) else zh('off')}")
++    print(f"  {zh('Bell:'):<12} {zh('on') if display.get('bell_on_complete', False) else zh('off')}")
+     ump = display.get('user_message_preview', {}) if isinstance(display.get('user_message_preview', {}), dict) else {}
+     ump_first = ump.get('first_lines', 2)
+     ump_last = ump.get('last_lines', 2)
+-    print(f"  User preview: first {ump_first} line(s), last {ump_last} line(s)")
++    print(f"  {zh('User preview:'):<12} {zh(f'first {ump_first} line(s), last {ump_last} line(s)')}")
+ 
+     # Terminal
+     print()
+-    print(color("◆ Terminal", Colors.CYAN, Colors.BOLD))
++    print(color(f"◆ {zh('Terminal')}", Colors.CYAN, Colors.BOLD))
+     terminal = config.get('terminal', {})
+-    print(f"  Backend:      {terminal.get('backend', 'local')}")
+-    print(f"  Working dir:  {terminal.get('cwd', '.')}")
+-    print(f"  Timeout:      {terminal.get('timeout', 60)}s")
++    print(f"  {zh('Backend:'):<12} {terminal.get('backend', 'local')}")
++    print(f"  {zh('Working dir:'):<12} {terminal.get('cwd', '.')}")
++    print(f"  {zh('Timeout:'):<12} {terminal.get('timeout', 60)}s")
+     
+     if terminal.get('backend') == 'docker':
+         print(f"  Docker image: {terminal.get('docker_image', 'nikolaik/python-nodejs:python3.11-nodejs20')}")
+@@ -4628,13 +4630,13 @@ def show_config():
+     
+     # Messaging
+     print()
+-    print(color("◆ Messaging Platforms", Colors.CYAN, Colors.BOLD))
++    print(color(f"◆ {zh('Messaging Platforms')}", Colors.CYAN, Colors.BOLD))
+     
+     telegram_token = get_env_value('TELEGRAM_BOT_TOKEN')
+     discord_token = get_env_value('DISCORD_BOT_TOKEN')
+     
+-    print(f"  Telegram:     {'configured' if telegram_token else color('not configured', Colors.DIM)}")
+-    print(f"  Discord:      {'configured' if discord_token else color('not configured', Colors.DIM)}")
++    print(f"  Telegram:     {zh('configured') if telegram_token else color(zh('not configured'), Colors.DIM)}")
++    print(f"  Discord:      {zh('configured') if discord_token else color(zh('not configured'), Colors.DIM)}")
+     
+     # Skill config
+     try:
+@@ -4648,16 +4650,16 @@ def show_config():
+                 key = var["key"]
+                 value = resolved.get(key, "")
+                 skill_name = var.get("skill", "")
+-                display_val = str(value) if value else color("(not set)", Colors.DIM)
++                display_val = str(value) if value else color(zh("(not set)"), Colors.DIM)
+                 print(f"  {key:<20s} {display_val}  {color(f'[{skill_name}]', Colors.DIM)}")
+     except Exception:
+         pass
+ 
+     print()
+     print(color("─" * 60, Colors.DIM))
+-    print(color("  hermes config edit     # Edit config file", Colors.DIM))
++    print(color(f"  hermes config edit     # {zh('Edit config file')}", Colors.DIM))
+     print(color("  hermes config set <key> <value>", Colors.DIM))
+-    print(color("  hermes setup           # Run setup wizard", Colors.DIM))
++    print(color(f"  hermes setup           # {zh('Run setup wizard')}", Colors.DIM))
+     print()
+ 
+ 
+diff --git a/hermes_cli/gateway.py b/hermes_cli/gateway.py
+index 5f95d0c..aa3cce0 100644
+--- a/hermes_cli/gateway.py
++++ b/hermes_cli/gateway.py
+@@ -38,6 +38,12 @@ from hermes_cli.setup import (
+ )
+ from hermes_cli.colors import Colors, color
+ 
++try:
++    from hermes_cli.zh_patch import zh
++except ImportError:  # pragma: no cover - compatibility for partially applied patches
++    def zh(text):
++        return text
++
+ 
+ # =============================================================================
+ # Process Management (for manual gateway runs)
+@@ -629,8 +635,8 @@ def _wait_for_systemd_service_restart(
+ 
+     print(
+         f"⚠ {scope_label} service did not become active within {int(timeout)}s.\n"
+-        f"  Check status: {'sudo ' if system else ''}hermes gateway status\n"
+-        f"  Check logs:   journalctl {'--user ' if not system else ''}-u {svc} -l --since '2 min ago'"
++        f"  检查状态：{'sudo ' if system else ''}hermes gateway status\n"
++        f"  查看日志：journalctl {'--user ' if not system else ''}-u {svc} -l --since '2 min ago'"
+     )
+     return False
+ 
+@@ -798,10 +804,10 @@ def _print_gateway_process_mismatch(snapshot: GatewayRuntimeSnapshot) -> None:
+     if not snapshot.has_process_service_mismatch:
+         return
+     print()
+-    print("⚠ Gateway process is running for this profile, but the service is not active")
+-    print(f"  PID(s): {_format_gateway_pids(snapshot.gateway_pids, limit=None)}")
+-    print("  This is usually a manual foreground/tmux/nohup run, so `hermes gateway`")
+-    print("  can refuse to start another copy until this process stops.")
++    print("⚠ 当前 profile 的 gateway 进程正在运行，但对应服务并未处于 active 状态")
++    print(f"  PID：{_format_gateway_pids(snapshot.gateway_pids, limit=None)}")
++    print("  这通常意味着它是通过前台、tmux 或 nohup 手动启动的，")
++    print("  所以在该进程停止前，`hermes gateway` 可能会拒绝再启动一个副本。")
+ 
+ 
+ def _print_other_profiles_gateway_status() -> None:
+@@ -892,10 +898,10 @@ def kill_gateway_processes(force: bool = False, exclude_pids: set | None = None,
+             # Process already gone
+             pass
+         except PermissionError:
+-            print(f"⚠ Permission denied to kill PID {pid}")
+-    
++            print(f"⚠ 没有权限结束 PID {pid}")
++
+         except OSError as exc:
+-            print(f"Failed to kill PID {pid}: {exc}")
++            print(f"结束 PID {pid} 失败：{exc}")
+     return killed
+ 
+ 
+@@ -926,7 +932,7 @@ def stop_profile_gateway() -> bool:
+     except ProcessLookupError:
+         pass  # Already gone
+     except PermissionError:
+-        print(f"⚠ Permission denied to kill PID {pid}")
++        print(f"⚠ 没有权限结束 PID {pid}")
+         return False
+ 
+     # Wait briefly for it to exit
+@@ -1308,7 +1314,7 @@ def _run_systemctl(args: list[str], *, system: bool = False, **kwargs) -> subpro
+ 
+ 
+ def _service_scope_label(system: bool = False) -> str:
+-    return "system" if system else "user"
++    return "系统" if system else "用户"
+ 
+ 
+ def get_installed_systemd_scopes() -> list[str]:
+@@ -1409,13 +1415,13 @@ def print_legacy_unit_warning() -> None:
+     legacy = _find_legacy_hermes_units()
+     if not legacy:
+         return
+-    print_warning("Legacy Hermes gateway unit(s) detected from an older install:")
++    print_warning("检测到来自旧版本安装的 Hermes gateway 旧版 unit：")
+     for name, path, is_system in legacy:
+-        scope = "system" if is_system else "user"
+-        print_info(f"    {path}  ({scope} scope)")
+-    print_info("  These run alongside the current hermes-gateway service and")
+-    print_info("  cause SIGTERM flap loops — both try to use the same bot token.")
+-    print_info("  Remove them with:")
++        scope = "系统" if is_system else "用户"
++        print_info(f"    {path}（{scope}作用域）")
++    print_info("  它们会和当前的 hermes-gateway 服务同时运行，")
++    print_info("  可能导致 SIGTERM 循环抖动，因为双方都在尝试使用同一个 bot token。")
++    print_info("  可用下面的命令清理：")
+     print_info("    hermes gateway migrate-legacy")
+ 
+ 
+@@ -1441,25 +1447,25 @@ def remove_legacy_hermes_units(
+     """
+     legacy = _find_legacy_hermes_units()
+     if not legacy:
+-        print("No legacy Hermes gateway units found.")
++        print("未发现旧版 Hermes gateway unit。")
+         return 0, []
+ 
+     user_units = [(n, p) for n, p, is_sys in legacy if not is_sys]
+     system_units = [(n, p) for n, p, is_sys in legacy if is_sys]
+ 
+     print()
+-    print("Legacy Hermes gateway unit(s) found:")
++    print("发现旧版 Hermes gateway unit：")
+     for name, path, is_system in legacy:
+-        scope = "system" if is_system else "user"
+-        print(f"  {path}  ({scope} scope)")
++        scope = "系统" if is_system else "用户"
++        print(f"  {path}（{scope}作用域）")
+     print()
+ 
+     if dry_run:
+-        print("(dry-run — nothing removed)")
++        print("（dry-run：不会删除任何内容）")
+         return 0, [p for _, p, _ in legacy]
+ 
+     if interactive and not prompt_yes_no("Remove these legacy units?", True):
+-        print("Skipped. Run again with: hermes gateway migrate-legacy")
++        print("已跳过。可重新运行：hermes gateway migrate-legacy")
+         return 0, [p for _, p, _ in legacy]
+ 
+     removed = 0
+@@ -1471,10 +1477,10 @@ def remove_legacy_hermes_units(
+             _run_systemctl(["stop", name], system=False, check=False, timeout=90)
+             _run_systemctl(["disable", name], system=False, check=False, timeout=30)
+             path.unlink(missing_ok=True)
+-            print(f"  ✓ Removed {path}")
++            print(f"  ✓ 已删除 {path}")
+             removed += 1
+         except (OSError, RuntimeError) as e:
+-            print(f"  ⚠ Could not remove {path}: {e}")
++            print(f"  ⚠ 无法删除 {path}：{e}")
+             remaining.append(path)
+ 
+     if user_units:
+@@ -1487,8 +1493,8 @@ def remove_legacy_hermes_units(
+     if system_units:
+         if os.geteuid() != 0:
+             print()
+-            print_warning("System-scope legacy units require root to remove.")
+-            print_info("  Re-run with: sudo hermes gateway migrate-legacy")
++            print_warning("系统作用域的旧版 unit 需要 root 权限才能删除。")
++            print_info("  请重新运行：sudo hermes gateway migrate-legacy")
+             for _, path in system_units:
+                 remaining.append(path)
+         else:
+@@ -1497,10 +1503,10 @@ def remove_legacy_hermes_units(
+                     _run_systemctl(["stop", name], system=True, check=False, timeout=90)
+                     _run_systemctl(["disable", name], system=True, check=False, timeout=30)
+                     path.unlink(missing_ok=True)
+-                    print(f"  ✓ Removed {path}")
++                    print(f"  ✓ 已删除 {path}")
+                     removed += 1
+                 except (OSError, RuntimeError) as e:
+-                    print(f"  ⚠ Could not remove {path}: {e}")
++                    print(f"  ⚠ 无法删除 {path}：{e}")
+                     remaining.append(path)
+ 
+             try:
+@@ -1510,9 +1516,9 @@ def remove_legacy_hermes_units(
+ 
+     print()
+     if remaining:
+-        print_warning(f"{len(remaining)} legacy unit(s) still present — see messages above.")
++        print_warning(f"仍有 {len(remaining)} 个旧版 unit 未删除，请看上面的提示。")
+     else:
+-        print_success(f"Removed {removed} legacy unit(s).")
++        print_success(f"已删除 {removed} 个旧版 unit。")
+ 
+     return removed, remaining
+ 
+@@ -1523,10 +1529,10 @@ def print_systemd_scope_conflict_warning() -> None:
+         return
+ 
+     rendered_scopes = " + ".join(scopes)
+-    print_warning(f"Both user and system gateway services are installed ({rendered_scopes}).")
+-    print_info("  This is confusing and can make start/stop/status behavior ambiguous.")
+-    print_info("  Default gateway commands target the user service unless you pass --system.")
+-    print_info("  Keep one of these:")
++    print_warning(f"同时安装了用户和系统两个 gateway 服务（{rendered_scopes}）。")
++    print_info("  这会让 start/stop/status 的行为变得模糊。")
++    print_info("  默认情况下，gateway 命令会操作用户服务，除非你传入 --system。")
++    print_info("  建议只保留其中一个：")
+     print_info("    hermes gateway uninstall")
+     print_info("    sudo hermes gateway uninstall --system")
+ 
+@@ -1534,7 +1540,7 @@ def print_systemd_scope_conflict_warning() -> None:
+ def _require_root_for_system_service(action: str) -> None:
+     if os.geteuid() != 0:
+         raise SystemScopeRequiresRootError(
+-            f"System gateway {action} requires root. Re-run with sudo.",
++            f"系统级 gateway {action} 需要 root 权限。请用 sudo 重新运行。",
+             action,
+         )
+ 
+@@ -1550,8 +1556,8 @@ def _system_service_identity(run_as_user: str | None = None) -> tuple[str, str,
+     if username == "root" and not run_as_user:
+         raise ValueError("Refusing to install the gateway system service as root; pass --run-as-user root to override (e.g. in LXC containers)")
+     if username == "root":
+-        print_warning("Installing gateway service to run as root.")
+-        print_info("  This is fine for LXC/container environments but not recommended on bare-metal hosts.")
++        print_warning("正在把 gateway 服务配置为以 root 用户运行。")
++        print_info("  这在 LXC/容器环境中通常可以接受，但不推荐在裸机主机上这样做。")
+ 
+     try:
+         user_info = pwd.getpwnam(username)
+@@ -1601,12 +1607,12 @@ def install_linux_gateway_from_setup(force: bool = False) -> tuple[str | None, b
+     if scope == "system":
+         run_as_user = _default_system_service_user()
+         if os.geteuid() != 0:
+-            print_warning("  System service install requires sudo, so Hermes can't create it from this user session.")
++            print_warning("  安装系统服务需要 sudo，所以 Hermes 无法在当前用户会话里直接创建它。")
+             if run_as_user:
+-                print_info(f"  After setup, run: sudo hermes gateway install --system --run-as-user {run_as_user}")
++                print_info(f"  配置完成后，请运行：sudo hermes gateway install --system --run-as-user {run_as_user}")
+             else:
+-                print_info("  After setup, run: sudo hermes gateway install --system --run-as-user <your-user>")
+-            print_info("  Then start it with: sudo hermes gateway start --system")
++                print_info("  配置完成后，请运行：sudo hermes gateway install --system --run-as-user <your-user>")
++            print_info("  然后用下面的命令启动：sudo hermes gateway start --system")
+             return scope, False
+ 
+         if not run_as_user:
+@@ -1615,7 +1621,7 @@ def install_linux_gateway_from_setup(force: bool = False) -> tuple[str | None, b
+                 run_as_user = (run_as_user or "").strip()
+                 if run_as_user:
+                     break
+-                print_error("  Enter a username.")
++                print_error("  请输入用户名。")
+ 
+         systemd_install(force=force, system=True, run_as_user=run_as_user)
+         return scope, True
+@@ -1677,13 +1683,13 @@ def print_systemd_linger_guidance() -> None:
+     """Print the current linger status and the fix when it is disabled."""
+     linger_enabled, linger_detail = get_systemd_linger_status()
+     if linger_enabled is True:
+-        print("✓ Systemd linger is enabled (service survives logout)")
++        print("✓ 已启用 systemd linger（注销后服务仍可继续运行）")
+     elif linger_enabled is False:
+-        print("⚠ Systemd linger is disabled (gateway may stop when you log out)")
+-        print("  Run: sudo loginctl enable-linger $USER")
++        print("⚠ systemd linger 未启用（注销后 gateway 可能会停止）")
++        print("  运行：sudo loginctl enable-linger $USER")
+     else:
+-        print(f"⚠ Could not verify systemd linger ({linger_detail})")
+-        print("  If you want the gateway user service to survive logout, run:")
++        print(f"⚠ 无法确认 systemd linger 状态（{linger_detail}）")
++        print("  如果你希望 gateway 用户服务在注销后继续运行，请执行：")
+         print("  sudo loginctl enable-linger $USER")
+ 
+ def _launchd_user_home() -> Path:
+@@ -2014,21 +2020,21 @@ def refresh_systemd_unit_if_needed(system: bool = False) -> bool:
+     expected_user = _read_systemd_user_from_unit(unit_path) if system else None
+     unit_path.write_text(generate_systemd_unit(system=system, run_as_user=expected_user), encoding="utf-8")
+     _run_systemctl(["daemon-reload"], system=system, check=True, timeout=30)
+-    print(f"↻ Updated gateway {_service_scope_label(system)} service definition to match the current Hermes install")
++    print(f"↻ 已更新 gateway {_service_scope_label(system)} 服务定义，使其与当前 Hermes 安装保持一致")
+     return True
+ 
+ 
+ 
+ def _print_linger_enable_warning(username: str, detail: str | None = None) -> None:
+     print()
+-    print("⚠ Linger not enabled — gateway may stop when you close this terminal.")
++    print("⚠ 未启用 linger，关闭当前终端后 gateway 可能会停止。")
+     if detail:
+-        print(f"  Auto-enable failed: {detail}")
++        print(f"  自动启用失败：{detail}")
+     print()
+-    print("  On headless servers (VPS, cloud instances) run:")
++    print("  在无头服务器（VPS、云主机）上，请运行：")
+     print(f"    sudo loginctl enable-linger {username}")
+     print()
+-    print("  Then restart the gateway:")
++    print("  然后重启 gateway：")
+     print(f"    systemctl --user restart {get_service_name()}.service")
+     print()
+ 
+@@ -2044,19 +2050,19 @@ def _ensure_linger_enabled() -> None:
+     username = getpass.getuser()
+     linger_file = Path(f"/var/lib/systemd/linger/{username}")
+     if linger_file.exists():
+-        print("✓ Systemd linger is enabled (service survives logout)")
++        print("✓ 已启用 systemd linger（注销后服务仍可继续运行）")
+         return
+ 
+     linger_enabled, linger_detail = get_systemd_linger_status()
+     if linger_enabled is True:
+-        print("✓ Systemd linger is enabled (service survives logout)")
++        print("✓ 已启用 systemd linger（注销后服务仍可继续运行）")
+         return
+ 
+     if not shutil.which("loginctl"):
+         _print_linger_enable_warning(username, linger_detail or "loginctl not found")
+         return
+ 
+-    print("Enabling linger so the gateway survives SSH logout...")
++    print("正在启用 linger，以便 gateway 在 SSH 退出后继续运行...")
+     try:
+         result = subprocess.run(
+             ["loginctl", "enable-linger", username],
+@@ -2070,7 +2076,7 @@ def _ensure_linger_enabled() -> None:
+         return
+ 
+     if result.returncode == 0:
+-        print("✓ Linger enabled — gateway will persist after logout")
++        print("✓ 已启用 linger，gateway 会在注销后继续运行")
+         return
+ 
+     detail = (result.stderr or result.stdout or f"exit {result.returncode}").strip()
+@@ -2160,35 +2166,35 @@ def systemd_install(force: bool = False, system: bool = False, run_as_user: str
+ 
+     if unit_path.exists() and not force:
+         if not systemd_unit_is_current(system=system):
+-            print(f"↻ Repairing outdated {_service_scope_label(system)} systemd service at: {unit_path}")
++            print(f"↻ 正在修复过期的 {_service_scope_label(system)} systemd 服务定义：{unit_path}")
+             refresh_systemd_unit_if_needed(system=system)
+             _run_systemctl(["enable", get_service_name()], system=system, check=True, timeout=30)
+-            print(f"✓ {_service_scope_label(system).capitalize()} service definition updated")
++            print(f"✓ {_service_scope_label(system).capitalize()} 服务定义已更新")
+             return
+-        print(f"Service already installed at: {unit_path}")
+-        print("Use --force to reinstall")
++        print(f"服务已安装在：{unit_path}")
++        print("可使用 --force 重新安装")
+         return
+ 
+     unit_path.parent.mkdir(parents=True, exist_ok=True)
+-    print(f"Installing {_service_scope_label(system)} systemd service to: {unit_path}")
++    print(f"正在安装 {_service_scope_label(system)} systemd 服务到：{unit_path}")
+     unit_path.write_text(generate_systemd_unit(system=system, run_as_user=run_as_user), encoding="utf-8")
+ 
+     _run_systemctl(["daemon-reload"], system=system, check=True, timeout=30)
+     _run_systemctl(["enable", get_service_name()], system=system, check=True, timeout=30)
+ 
+     print()
+-    print(f"✓ {_service_scope_label(system).capitalize()} service installed and enabled!")
++    print(f"✓ {_service_scope_label(system).capitalize()} 服务已安装并启用！")
+     print()
+-    print("Next steps:")
+-    print(f"  {'sudo ' if system else ''}hermes gateway start{scope_flag}              # Start the service")
+-    print(f"  {'sudo ' if system else ''}hermes gateway status{scope_flag}             # Check status")
+-    print(f"  {'journalctl' if system else 'journalctl --user'} -u {get_service_name()} -f  # View logs")
++    print("下一步：")
++    print(f"  {'sudo ' if system else ''}hermes gateway start{scope_flag}              # 启动服务")
++    print(f"  {'sudo ' if system else ''}hermes gateway status{scope_flag}             # 查看状态")
++    print(f"  {'journalctl' if system else 'journalctl --user'} -u {get_service_name()} -f  # 查看日志")
+     print()
+ 
+     if system:
+         configured_user = _read_systemd_user_from_unit(unit_path)
+         if configured_user:
+-            print(f"Configured to run as: {configured_user}")
++            print(f"配置为以该用户运行：{configured_user}")
+     else:
+         _ensure_linger_enabled()
+ 
+@@ -2207,10 +2213,10 @@ def systemd_uninstall(system: bool = False):
+     unit_path = get_systemd_unit_path(system=system)
+     if unit_path.exists():
+         unit_path.unlink()
+-        print(f"✓ Removed {unit_path}")
++        print(f"✓ 已删除 {unit_path}")
+ 
+     _run_systemctl(["daemon-reload"], system=system, check=True, timeout=30)
+-    print(f"✓ {_service_scope_label(system).capitalize()} service uninstalled")
++    print(f"✓ {_service_scope_label(system).capitalize()} 服务已卸载")
+ 
+ 
+ def _require_service_installed(action: str, system: bool = False) -> None:
+@@ -2251,7 +2257,7 @@ def systemd_stop(system: bool = False):
+     except Exception:
+         pass
+     _run_systemctl(["stop", get_service_name()], system=system, check=True, timeout=90)
+-    print(f"✓ {_service_scope_label(system).capitalize()} service stopped")
++    print(f"✓ {_service_scope_label(system).capitalize()} 服务已停止")
+ 
+ 
+ 
+@@ -2340,8 +2346,8 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
+     scope_flag = " --system" if system else ""
+ 
+     if not unit_path.exists():
+-        print("✗ Gateway service is not installed")
+-        print(f"  Run: {'sudo ' if system else ''}hermes gateway install{scope_flag}")
++        print("✗ Gateway 服务未安装")
++        print(f"  运行：{'sudo ' if system else ''}hermes gateway install{scope_flag}")
+         return
+ 
+     if has_conflicting_systemd_units():
+@@ -2354,7 +2360,7 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
+ 
+     if not systemd_unit_is_current(system=system):
+         print("⚠ Installed gateway service definition is outdated")
+-        print(f"  Run: {'sudo ' if system else ''}hermes gateway restart{scope_flag}  # auto-refreshes the unit")
++        print(f"  ???{'sudo ' if system else ''}hermes gateway restart{scope_flag}  # ???? unit")
+         print()
+ 
+     status_cmd = ["status", get_service_name(), "--no-pager"]
+@@ -2382,16 +2388,16 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
+         print(f"✓ {_service_scope_label(system).capitalize()} gateway service is running")
+     else:
+         print(f"✗ {_service_scope_label(system).capitalize()} gateway service is stopped")
+-        print(f"  Run: {'sudo ' if system else ''}hermes gateway start{scope_flag}")
++        print(f"  ???{'sudo ' if system else ''}hermes gateway start{scope_flag}")
+ 
+     configured_user = _read_systemd_user_from_unit(unit_path) if system else None
+     if configured_user:
+-        print(f"Configured to run as: {configured_user}")
++        print(f"配置为以下用户运行：{configured_user}")
+ 
+     runtime_lines = _runtime_health_lines()
+     if runtime_lines:
+         print()
+-        print("Recent gateway health:")
++        print("近期 gateway 健康状态：")
+         for line in runtime_lines:
+             print(f"  {line}")
+ 
+@@ -2422,11 +2428,11 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
+             print("✓ Systemd linger is enabled (service survives logout)")
+         elif linger_enabled is False:
+             print("⚠ Systemd linger is disabled (gateway may stop when you log out)")
+-            print("  Run: sudo loginctl enable-linger $USER")
++            print("  运行：sudo loginctl enable-linger $USER")
+ 
+     if deep:
+         print()
+-        print("Recent logs:")
++        print("最近日志：")
+         log_cmd = _journalctl_cmd(system) + ["-u", get_service_name(), "-n", "20", "--no-pager"]
+         if full:
+             log_cmd.append("-l")
+@@ -2562,7 +2568,7 @@ def refresh_launchd_plist_if_needed() -> bool:
+     # Bootout/bootstrap so launchd picks up the new definition
+     subprocess.run(["launchctl", "bootout", f"{_launchd_domain()}/{label}"], check=False, timeout=90)
+     subprocess.run(["launchctl", "bootstrap", _launchd_domain(), str(plist_path)], check=False, timeout=30)
+-    print("↻ Updated gateway launchd service definition to match the current Hermes install")
++    print("↻ 已更新 gateway 的 launchd 服务定义，使其与当前 Hermes 安装保持一致")
+     return True
+ 
+ 
+@@ -2571,27 +2577,27 @@ def launchd_install(force: bool = False):
+     
+     if plist_path.exists() and not force:
+         if not launchd_plist_is_current():
+-            print(f"↻ Repairing outdated launchd service at: {plist_path}")
++            print(f"↻ 正在修复过期的 launchd 服务定义：{plist_path}")
+             refresh_launchd_plist_if_needed()
+-            print("✓ Service definition updated")
++            print("✓ 服务定义已更新")
+             return
+-        print(f"Service already installed at: {plist_path}")
+-        print("Use --force to reinstall")
++        print(f"服务已安装在：{plist_path}")
++        print("可使用 --force 重新安装")
+         return
+     
+     plist_path.parent.mkdir(parents=True, exist_ok=True)
+-    print(f"Installing launchd service to: {plist_path}")
++    print(f"正在安装 launchd 服务到：{plist_path}")
+     plist_path.write_text(generate_launchd_plist())
+     
+     subprocess.run(["launchctl", "bootstrap", _launchd_domain(), str(plist_path)], check=True, timeout=30)
+     
+     print()
+-    print("✓ Service installed and loaded!")
++    print("✓ 服务已安装并加载！")
+     print()
+-    print("Next steps:")
+-    print("  hermes gateway status             # Check status")
++    print("下一步：")
++    print("  hermes gateway status             # 查看状态")
+     from hermes_constants import display_hermes_home as _dhh
+-    print(f"  tail -f {_dhh()}/logs/gateway.log  # View logs")
++    print(f"  tail -f {_dhh()}/logs/gateway.log  # 查看日志")
+ 
+ def launchd_uninstall():
+     plist_path = get_launchd_plist_path()
+@@ -2600,9 +2606,9 @@ def launchd_uninstall():
+     
+     if plist_path.exists():
+         plist_path.unlink()
+-        print(f"✓ Removed {plist_path}")
++        print(f"✓ 已删除 {plist_path}")
+     
+-    print("✓ Service uninstalled")
++    print("✓ 服务已卸载")
+ 
+ def launchd_start():
+     plist_path = get_launchd_plist_path()
+@@ -2610,12 +2616,12 @@ def launchd_start():
+ 
+     # Self-heal if the plist is missing entirely (e.g., manual cleanup, failed upgrade)
+     if not plist_path.exists():
+-        print("↻ launchd plist missing; regenerating service definition")
++        print("↻ 未找到 launchd plist，正在重新生成服务定义")
+         plist_path.parent.mkdir(parents=True, exist_ok=True)
+         plist_path.write_text(generate_launchd_plist(), encoding="utf-8")
+         subprocess.run(["launchctl", "bootstrap", _launchd_domain(), str(plist_path)], check=True, timeout=30)
+         subprocess.run(["launchctl", "kickstart", f"{_launchd_domain()}/{label}"], check=True, timeout=30)
+-        print("✓ Service started")
++        print("✓ 服务已启动")
+         return
+ 
+     refresh_launchd_plist_if_needed()
+@@ -2624,10 +2630,10 @@ def launchd_start():
+     except subprocess.CalledProcessError as e:
+         if e.returncode not in (3, 113):
+             raise
+-        print("↻ launchd job was unloaded; reloading service definition")
++        print("↻ launchd job 已卸载，正在重新加载服务定义")
+         subprocess.run(["launchctl", "bootstrap", _launchd_domain(), str(plist_path)], check=True, timeout=30)
+         subprocess.run(["launchctl", "kickstart", f"{_launchd_domain()}/{label}"], check=True, timeout=30)
+-    print("✓ Service started")
++    print("✓ 服务已启动")
+ 
+ def launchd_stop():
+     label = get_launchd_label()
+@@ -2651,7 +2657,7 @@ def launchd_stop():
+         else:
+             raise
+     _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
+-    print("✓ Service stopped")
++    print("✓ 服务已停止")
+ 
+ def _wait_for_gateway_exit(timeout: float = 10.0, force_after: float | None = 5.0) -> bool:
+     """Wait for the gateway process (by saved PID) to exit.
+@@ -2680,7 +2686,7 @@ def _wait_for_gateway_exit(timeout: float = 10.0, force_after: float | None = 5.
+             # Grace period expired — force-kill the specific PID.
+             try:
+                 terminate_pid(pid, force=True)
+-                print(f"⚠ Gateway PID {pid} did not exit gracefully; sent SIGKILL")
++                print(f"⚠ Gateway PID {pid} 未正常退出，已发送 SIGKILL")
+             except (ProcessLookupError, PermissionError, OSError):
+                 return True  # Already gone or we can't touch it.
+             force_sent = True
+@@ -2690,7 +2696,7 @@ def _wait_for_gateway_exit(timeout: float = 10.0, force_after: float | None = 5.
+     # Timed out even after force-kill.
+     remaining_pid = get_running_pid()
+     if remaining_pid is not None:
+-        print(f"⚠ Gateway PID {remaining_pid} still running after {timeout}s — restart may fail")
++        print(f"⚠ Gateway PID {remaining_pid} 在 {timeout}s 后仍在运行，重启可能失败")
+         return False
+     return True
+ 
+@@ -2704,7 +2710,7 @@ def launchd_restart():
+     try:
+         pid = get_running_pid()
+         if pid is not None and _request_gateway_self_restart(pid):
+-            print("✓ Service restart requested")
++            print("✓ 已请求服务重启")
+             return
+         if pid is not None:
+             try:
+@@ -2714,18 +2720,18 @@ def launchd_restart():
+             if pid is not None:
+                 exited = _wait_for_gateway_exit(timeout=drain_timeout, force_after=None)
+                 if not exited:
+-                    print(f"⚠ Gateway drain timed out after {drain_timeout:.0f}s — forcing launchd restart")
++                    print(f"⚠ Gateway 排空等待在 {drain_timeout:.0f}s 后超时，正在强制重启 launchd")
+         subprocess.run(["launchctl", "kickstart", "-k", target], check=True, timeout=90)
+-        print("✓ Service restarted")
++        print("✓ 服务已重启")
+     except subprocess.CalledProcessError as e:
+         if e.returncode not in (3, 113):
+             raise
+         # Job not loaded — bootstrap and start fresh
+-        print("↻ launchd job was unloaded; reloading")
++        print("↻ launchd job 已卸载，正在重新加载")
+         plist_path = get_launchd_plist_path()
+         subprocess.run(["launchctl", "bootstrap", _launchd_domain(), str(plist_path)], check=True, timeout=30)
+         subprocess.run(["launchctl", "kickstart", target], check=True, timeout=30)
+-        print("✓ Service restarted")
++        print("✓ 服务已重启")
+ 
+ def launchd_status(deep: bool = False):
+     plist_path = get_launchd_plist_path()
+@@ -2743,26 +2749,26 @@ def launchd_status(deep: bool = False):
+         loaded = False
+         loaded_output = ""
+ 
+-    print(f"Launchd plist: {plist_path}")
++    print(f"Launchd plist：{plist_path}")
+     if launchd_plist_is_current():
+-        print("✓ Service definition matches the current Hermes install")
++        print("✓ 服务定义与当前 Hermes 安装一致")
+     else:
+-        print("⚠ Service definition is stale relative to the current Hermes install")
+-        print("  Run: hermes gateway start")
++        print("⚠ 服务定义相对于当前 Hermes 安装已过期")
++        print("  运行：hermes gateway start")
+ 
+     if loaded:
+-        print("✓ Gateway service is loaded")
++        print("✓ Gateway 服务已加载")
+         print(loaded_output)
+     else:
+-        print("✗ Gateway service is not loaded")
+-        print("  Service definition exists locally but launchd has not loaded it.")
+-        print("  Run: hermes gateway start")
++        print("✗ Gateway 服务未加载")
++        print("  服务定义文件已存在，但 launchd 尚未加载它。")
++        print("  运行：hermes gateway start")
+     
+     if deep:
+         log_file = get_hermes_home() / "logs" / "gateway.log"
+         if log_file.exists():
+             print()
+-            print("Recent logs:")
++            print("最近日志：")
+             subprocess.run(["tail", "-20", str(log_file)], timeout=10)
+ 
+ 
+@@ -2836,10 +2842,10 @@ def run_gateway(verbose: int = 0, quiet: bool = False, replace: bool = False):
+     from gateway.run import start_gateway
+     
+     print("┌─────────────────────────────────────────────────────────┐")
+-    print("│           ⚕ Hermes Gateway Starting...                 │")
++    print("│           ⚕ Hermes Gateway 启动中...                  │")
+     print("├─────────────────────────────────────────────────────────┤")
+-    print("│  Messaging platforms + cron scheduler                    │")
+-    print("│  Press Ctrl+C to stop                                   │")
++    print("│  消息平台 + cron 调度器                                │")
++    print("│  按 Ctrl+C 停止                                        │")
+     print("└─────────────────────────────────────────────────────────┘")
+     print()
+     
+@@ -3400,39 +3406,40 @@ def _setup_standard_platform(platform: dict):
+     emoji = platform["emoji"]
+     label = platform["label"]
+     token_var = platform["token_var"]
++    label_zh = zh(label)
+ 
+     print()
+-    print(color(f"  ─── {emoji} {label} Setup ───", Colors.CYAN))
++    print(color(f"  ─── {emoji} {label_zh} 设置 ───", Colors.CYAN))
+ 
+     # Show step-by-step setup instructions if this platform has them
+     instructions = platform.get("setup_instructions")
+     if instructions:
+         print()
+         for line in instructions:
+-            print_info(f"  {line}")
++            print_info(f"  {zh(line)}")
+ 
+     existing_token = get_env_value(token_var)
+     if existing_token:
+         print()
+-        print_success(f"{label} is already configured.")
+-        if not prompt_yes_no(f"  Reconfigure {label}?", False):
++        print_success(f"{label_zh}已配置。")
++        if not prompt_yes_no(f"  重新配置 {label_zh} 吗？", False):
+             return
+ 
+     allowed_val_set = None  # Track if user set an allowlist (for home channel offer)
+ 
+     for var in platform["vars"]:
+         print()
+-        print_info(f"  {var['help']}")
++        print_info(f"  {zh(var['help'])}")
+         existing = get_env_value(var["name"])
+         if existing and var["name"] != token_var:
+-            print_info(f"  Current: {existing}")
++            print_info(f"  当前值：{existing}")
+ 
+         # Allowlist fields get special handling for the deny-by-default security model
+         if var.get("is_allowlist"):
+-            print_info("  The gateway DENIES all users by default for security.")
+-            print_info("  Enter user IDs to create an allowlist, or leave empty")
+-            print_info("  and you'll be asked about open access next.")
+-            value = prompt(f"  {var['prompt']}", password=False)
++            print_info("  出于安全考虑，网关默认会拒绝所有用户。")
++            print_info("  请输入用户 ID 创建允许名单，或者留空，")
++            print_info("  接下来会询问你是否开启公开访问。")
++            value = prompt(f"  {zh(var['prompt'])}", password=False)
+             if value:
+                 cleaned = value.replace(" ", "")
+                 # For Discord, strip common prefixes (user:123, <@123>, <@!123>)
+@@ -3448,36 +3455,36 @@ def _setup_standard_platform(platform: dict):
+                             parts.append(uid)
+                     cleaned = ",".join(parts)
+                 save_env_value(var["name"], cleaned)
+-                print_success("  Saved — only these users can interact with the bot.")
++                print_success("已保存。只有这些用户可以与机器人交互。")
+                 allowed_val_set = cleaned
+             else:
+                 # No allowlist — ask about open access vs DM pairing
+                 print()
+                 access_choices = [
+-                    "Enable open access (anyone can message the bot)",
+-                    "Use DM pairing (unknown users request access, you approve with 'hermes pairing approve')",
+-                    "Skip for now (bot will deny all users until configured)",
++                    "开启公开访问（任何人都可以给机器人发消息）",
++                    "使用私信配对（陌生用户先申请访问，你再用 'hermes pairing approve' 审批）",
++                    "暂时跳过（在完成配置前，机器人会拒绝所有用户）",
+                 ]
+-                access_idx = prompt_choice("  How should unauthorized users be handled?", access_choices, 1)
++                access_idx = prompt_choice("  未授权用户该如何处理？", access_choices, 1)
+                 if access_idx == 0:
+                     save_env_value("GATEWAY_ALLOW_ALL_USERS", "true")
+-                    print_warning("  Open access enabled — anyone can use your bot!")
++                    print_warning("已开启公开访问，任何人都可以使用你的机器人。")
+                 elif access_idx == 1:
+-                    print_success("  DM pairing mode — users will receive a code to request access.")
+-                    print_info("  Approve with: hermes pairing approve <platform> <code>")
++                    print_success("已启用私信配对模式。用户会收到一个访问申请验证码。")
++                    print_info("  审批命令：hermes pairing approve <platform> <code>")
+                 else:
+-                    print_info("  Skipped — configure later with 'hermes gateway setup'")
++                    print_info("  已跳过。稍后可用 'hermes gateway setup' 再配置。")
+             continue
+ 
+-        value = prompt(f"  {var['prompt']}", password=var.get("password", False))
++        value = prompt(f"  {zh(var['prompt'])}", password=var.get("password", False))
+         if value:
+             save_env_value(var["name"], value)
+-            print_success(f"  Saved {var['name']}")
++            print_success(f"已保存 {var['name']}")
+         elif var["name"] == token_var:
+-            print_warning(f"  Skipped — {label} won't work without this.")
++            print_warning(f"已跳过。{label_zh}缺少这个值将无法工作。")
+             return
+         else:
+-            print_info("  Skipped (can configure later)")
++            print_info("  已跳过（稍后仍可配置）")
+ 
+     # If an allowlist was set and home channel wasn't, offer to reuse
+     # the first user ID (common for Telegram DMs).
+@@ -3485,12 +3492,12 @@ def _setup_standard_platform(platform: dict):
+     home_val = get_env_value(home_var)
+     if allowed_val_set and not home_val and label == "Telegram":
+         first_id = allowed_val_set.split(",")[0].strip()
+-        if first_id and prompt_yes_no(f"  Use your user ID ({first_id}) as the home channel?", True):
++        if first_id and prompt_yes_no(f"  要将你的用户 ID（{first_id}）设为主频道吗？", True):
+             save_env_value(home_var, first_id)
+-            print_success(f"  Home channel set to {first_id}")
++            print_success(f"主频道已设置为 {first_id}")
+ 
+     print()
+-    print_success(f"{emoji} {label} configured!")
++    print_success(f"{emoji} {label_zh}已配置！")
+ 
+ 
+ def _setup_whatsapp():
+@@ -3521,23 +3528,24 @@ def _setup_dingtalk():
+     dingtalk_platform = next(p for p in _PLATFORMS if p["key"] == "dingtalk")
+     emoji = dingtalk_platform["emoji"]
+     label = dingtalk_platform["label"]
++    label_zh = zh(label)
+ 
+     print()
+-    print(color(f"  ─── {emoji} {label} Setup ───", Colors.CYAN))
++    print(color(f"  ─── {emoji} {label_zh} 设置 ───", Colors.CYAN))
+ 
+     existing = get_env_value("DINGTALK_CLIENT_ID")
+     if existing:
+         print()
+-        print_success(f"{label} is already configured (Client ID: {existing}).")
+-        if not prompt_yes_no(f"  Reconfigure {label}?", False):
++        print_success(f"{label_zh}已配置（Client ID: {existing}）。")
++        if not prompt_yes_no(f"  重新配置 {label_zh} 吗？", False):
+             return
+ 
+     print()
+     method = prompt_choice(
+-        "  Choose setup method",
++        "  选择设置方式",
+         [
+-            "QR Code Scan (Recommended, auto-obtain Client ID and Client Secret)",
+-            "Manual Input (Client ID and Client Secret)",
++            "扫码授权（推荐，自动获取 Client ID 和 Client Secret）",
++            "手动输入（Client ID 和 Client Secret）",
+         ],
+         default=0,
+     )
+@@ -3547,13 +3555,13 @@ def _setup_dingtalk():
+         try:
+             from hermes_cli.dingtalk_auth import dingtalk_qr_auth
+         except ImportError as exc:
+-            print_warning(f"  QR auth module failed to load ({exc}), falling back to manual input.")
++            print_warning(f"  扫码授权模块加载失败（{exc}），回退到手动输入。")
+             _setup_standard_platform(dingtalk_platform)
+             return
+ 
+         result = dingtalk_qr_auth()
+         if result is None:
+-            print_warning("  QR auth incomplete, falling back to manual input.")
++            print_warning("  扫码授权未完成，回退到手动输入。")
+             _setup_standard_platform(dingtalk_platform)
+             return
+ 
+@@ -3562,7 +3570,7 @@ def _setup_dingtalk():
+         save_env_value("DINGTALK_CLIENT_SECRET", client_secret)
+         save_env_value("DINGTALK_ALLOW_ALL_USERS", "true")
+         print()
+-        print_success(f"{emoji} {label} configured via QR scan!")
++        print_success(f"{emoji} {label_zh}已通过扫码配置！")
+     else:
+         # ── Manual entry ──
+         _setup_standard_platform(dingtalk_platform)
+@@ -3748,36 +3756,36 @@ def _is_service_running() -> bool:
+ def _setup_weixin():
+     """Interactive setup for Weixin / WeChat personal accounts."""
+     print()
+-    print(color("  ─── 💬 Weixin / WeChat Setup ───", Colors.CYAN))
++    print(color("  ─── 💬 微信 / WeChat 设置 ───", Colors.CYAN))
+     print()
+-    print_info("  1. Hermes will open Tencent iLink QR login in this terminal.")
+-    print_info("  2. Use WeChat to scan and confirm the QR code.")
+-    print_info("  3. Hermes will store the returned account_id/token in ~/.hermes/.env.")
+-    print_info("  4. This adapter supports native text, image, video, and document delivery.")
++    print_info("  1. Hermes 会在当前终端中打开腾讯 iLink 二维码登录。")
++    print_info("  2. 用微信扫码并确认登录。")
++    print_info("  3. Hermes 会把返回的 account_id/token 保存到 ~/.hermes/.env。")
++    print_info("  4. 这个适配器支持原生文本、图片、视频和文档发送。")
+ 
+     existing_account = get_env_value("WEIXIN_ACCOUNT_ID")
+     existing_token = get_env_value("WEIXIN_TOKEN")
+     if existing_account and existing_token:
+         print()
+-        print_success("Weixin is already configured.")
+-        if not prompt_yes_no("  Reconfigure Weixin?", False):
++        print_success("微信已配置。")
++        if not prompt_yes_no("  重新配置微信吗？", False):
+             return
+ 
+     try:
+         from gateway.platforms.weixin import check_weixin_requirements, qr_login
+     except Exception as exc:
+-        print_error(f"  Weixin adapter import failed: {exc}")
+-        print_info("  Install gateway dependencies first, then retry.")
++        print_error(f"  微信适配器导入失败：{exc}")
++        print_info("  请先安装网关依赖，然后重试。")
+         return
+ 
+     if not check_weixin_requirements():
+-        print_error("  Missing dependencies: Weixin needs aiohttp and cryptography.")
+-        print_info("  Install them, then rerun `hermes gateway setup`.")
++        print_error("  缺少依赖：微信适配器需要 aiohttp 和 cryptography。")
++        print_info("  安装后再运行 `hermes gateway setup`。")
+         return
+ 
+     print()
+-    if not prompt_yes_no("  Start QR login now?", True):
+-        print_info("  Cancelled.")
++    if not prompt_yes_no("  现在开始二维码登录吗？", True):
++        print_info("  已取消。")
+         return
+ 
+     import asyncio
+@@ -3785,14 +3793,14 @@ def _setup_weixin():
+         credentials = asyncio.run(qr_login(str(get_hermes_home())))
+     except KeyboardInterrupt:
+         print()
+-        print_warning("  Weixin setup cancelled.")
++        print_warning("  微信设置已取消。")
+         return
+     except Exception as exc:
+-        print_error(f"  QR login failed: {exc}")
++        print_error(f"  二维码登录失败：{exc}")
+         return
+ 
+     if not credentials:
+-        print_warning("  QR login did not complete.")
++        print_warning("  二维码登录未完成。")
+         return
+ 
+     account_id = credentials.get("account_id", "")
+@@ -3907,7 +3915,7 @@ def _setup_feishu():
+         try:
+             from gateway.platforms.feishu import qr_register
+         except Exception as exc:
+-            print_error(f"  Feishu / Lark onboard import failed: {exc}")
++            print_error(f"  飞书 / Lark 接入模块导入失败：{exc}")
+             qr_register = None
+ 
+         if qr_register is not None:
+@@ -3915,32 +3923,32 @@ def _setup_feishu():
+                 credentials = qr_register()
+             except KeyboardInterrupt:
+                 print()
+-                print_warning("  Feishu / Lark setup cancelled.")
++                print_warning("  飞书 / Lark 设置已取消。")
+                 return
+             except Exception as exc:
+-                print_warning(f"  QR registration failed: {exc}")
++                print_warning(f"  二维码注册失败：{exc}")
+         if credentials:
+             used_qr = True
+         if not credentials:
+-            print_info("  QR setup did not complete. Continuing with manual input.")
++            print_info("  扫码配置未完成，继续手动输入。")
+ 
+     # ── Manual credential input ──
+     if not credentials:
+         print()
+-        print_info("  Go to https://open.feishu.cn/ (or https://open.larksuite.com/ for Lark)")
+-        print_info("  Create an app, enable the Bot capability, and copy the credentials.")
++        print_info("  打开 https://open.feishu.cn/（Lark 国际版用 https://open.larksuite.com/）")
++        print_info("  创建应用、启用 Bot 能力，然后复制对应凭据。")
+         print()
+         app_id = prompt("  App ID", password=False)
+         if not app_id:
+-            print_warning("  Skipped — Feishu / Lark won't work without an App ID.")
++            print_warning("  已跳过。飞书 / Lark 缺少 App ID 将无法工作。")
+             return
+         app_secret = prompt("  App Secret", password=True)
+         if not app_secret:
+-            print_warning("  Skipped — Feishu / Lark won't work without an App Secret.")
++            print_warning("  已跳过。飞书 / Lark 缺少 App Secret 将无法工作。")
+             return
+ 
+-        domain_choices = ["feishu (China)", "lark (International)"]
+-        domain_idx = prompt_choice("  Domain", domain_choices, 0)
++        domain_choices = ["feishu（中国）", "lark（国际版）"]
++        domain_idx = prompt_choice("  域名区域", domain_choices, 0)
+         domain = "lark" if domain_idx == 1 else "feishu"
+ 
+         # Try to probe the bot with manual credentials
+@@ -3950,11 +3958,11 @@ def _setup_feishu():
+             bot_info = probe_bot(app_id, app_secret, domain)
+             if bot_info:
+                 bot_name = bot_info.get("bot_name")
+-                print_success(f"  Credentials verified — bot: {bot_name or 'unnamed'}")
++                print_success(f"  凭据验证成功。机器人：{bot_name or '未命名'}")
+             else:
+-                print_warning("  Could not verify bot connection. Credentials saved anyway.")
++                print_warning("  无法验证机器人连接，仍会保存凭据。")
+         except Exception as exc:
+-            print_warning(f"  Credential verification skipped: {exc}")
++            print_warning(f"  已跳过凭据验证：{exc}")
+ 
+         credentials = {
+             "app_id": app_id,
+@@ -4344,10 +4352,10 @@ def gateway_setup():
+ 
+     print()
+     print(color("┌─────────────────────────────────────────────────────────┐", Colors.MAGENTA))
+-    print(color("│             ⚕ Gateway Setup                            │", Colors.MAGENTA))
++    print(color(f"│             ⚕ {zh('Gateway Setup'):<38s} │", Colors.MAGENTA))
+     print(color("├─────────────────────────────────────────────────────────┤", Colors.MAGENTA))
+-    print(color("│  Configure messaging platforms and the gateway service. │", Colors.MAGENTA))
+-    print(color("│  Press Ctrl+C at any time to exit.                     │", Colors.MAGENTA))
++    print(color("│  配置消息平台和网关服务。                               │", Colors.MAGENTA))
++    print(color("│  可随时按 Ctrl+C 退出。                                │", Colors.MAGENTA))
+     print(color("└─────────────────────────────────────────────────────────┘", Colors.MAGENTA))
+ 
+     # ── Gateway service status ──
+@@ -4364,9 +4372,9 @@ def gateway_setup():
+         print()
+ 
+     if service_installed and service_running:
+-        print_success("Gateway service is installed and running.")
++        print_success(zh("Gateway service is installed and running."))
+     elif service_installed:
+-        print_warning("Gateway service is installed but not running.")
++        print_warning(zh("Gateway service is installed but not running."))
+         if supports_systemd_services() and _system_scope_wizard_would_need_root():
+             _print_system_scope_remediation("start")
+         elif prompt_yes_no("  Start it now?", True):
+@@ -4388,8 +4396,8 @@ def gateway_setup():
+             except subprocess.CalledProcessError as e:
+                 print_error(f"  Failed to start: {e}")
+     else:
+-        print_info("Gateway service is not installed yet.")
+-        print_info("You'll be offered to install it after configuring platforms.")
++        print_info(zh("Gateway service is not installed yet."))
++        print_info("平台配置完成后，会提示你安装网关服务。")
+ 
+     # ── Platform configuration loop ──
+     while True:
+@@ -4444,7 +4452,7 @@ def gateway_setup():
+                         launchd_restart()
+                     else:
+                         stop_profile_gateway()
+-                        print_info("Start manually: hermes gateway")
++                        print_info("请手动运行：hermes gateway")
+                 except UserSystemdUnavailableError as e:
+                     print_error("  Restart failed — user systemd not reachable:")
+                     for line in str(e).splitlines():
+@@ -4476,8 +4484,8 @@ def gateway_setup():
+             print()
+             if supports_systemd_services() or is_macos():
+                 platform_name = "systemd" if supports_systemd_services() else "launchd"
+-                wsl_note = " (note: services may not survive WSL restarts)" if is_wsl() else ""
+-                if prompt_yes_no(f"  Install the gateway as a {platform_name} service?{wsl_note} (runs in background, starts on boot)", True):
++                wsl_note = "（注意：WSL 重启后服务可能不会保留）" if is_wsl() else ""
++                if prompt_yes_no(f"  要将网关安装为 {platform_name} 服务吗？{wsl_note}（后台运行，开机启动）", True):
+                     try:
+                         installed_scope = None
+                         did_install = False
+@@ -4501,29 +4509,29 @@ def gateway_setup():
+                                 print_error(f"  Start failed: {e}")
+                     except subprocess.CalledProcessError as e:
+                         print_error(f"  Install failed: {e}")
+-                        print_info("  You can try manually: hermes gateway install")
++                        print_info("  你也可以手动执行：hermes gateway install")
+                 else:
+-                    print_info("  You can install later: hermes gateway install")
++                    print_info("  稍后可安装：hermes gateway install")
+                     if supports_systemd_services():
+-                        print_info("  Or as a boot-time service: sudo hermes gateway install --system")
+-                    print_info("  Or run in foreground:  hermes gateway run")
++                        print_info("  或安装为开机服务：sudo hermes gateway install --system")
++                    print_info("  或前台运行：hermes gateway run")
+             elif is_wsl():
+-                print_info("  WSL detected but systemd is not running.")
+-                print_info("  Run in foreground: hermes gateway run")
+-                print_info("  For persistence:   tmux new -s hermes 'hermes gateway run'")
+-                print_info("  To enable systemd: add systemd=true to /etc/wsl.conf, then 'wsl --shutdown'")
++                print_info("  检测到 WSL，但 systemd 未运行。")
++                print_info("  可前台运行：hermes gateway run")
++                print_info("  若需常驻：tmux new -s hermes 'hermes gateway run'")
++                print_info("  若要启用 systemd：在 /etc/wsl.conf 中添加 systemd=true，然后执行 'wsl --shutdown'")
+             else:
+                 if is_termux():
+                     from hermes_constants import display_hermes_home as _dhh
+-                    print_info("  Termux does not use systemd/launchd services.")
+-                    print_info("  Run in foreground: hermes gateway run")
+-                    print_info(f"  Or start it manually in the background (best effort): nohup hermes gateway run >{_dhh()}/logs/gateway.log 2>&1 &")
++                    print_info("  Termux 不使用 systemd/launchd 服务。")
++                    print_info("  可前台运行：hermes gateway run")
++                    print_info(f"  或手动后台启动（尽力而为）：nohup hermes gateway run >{_dhh()}/logs/gateway.log 2>&1 &")
+                 else:
+-                    print_info("  Service install not supported on this platform.")
+-                    print_info("  Run in foreground: hermes gateway run")
++                    print_info("  当前平台不支持服务安装。")
++                    print_info("  可前台运行：hermes gateway run")
+     else:
+         print()
+-        print_info("No platforms configured. Run 'hermes gateway setup' when ready.")
++        print_info("尚未配置任何平台。准备好后可运行 'hermes gateway setup'。")
+ 
+     print()
+ 
+@@ -4577,39 +4585,39 @@ def _gateway_command_inner(args):
+         system = getattr(args, 'system', False)
+         run_as_user = getattr(args, 'run_as_user', None)
+         if is_termux():
+-            print("Gateway service installation is not supported on Termux.")
+-            print("Run manually: hermes gateway")
++            print("Termux 不支持安装 gateway 服务。")
++            print("请手动运行：hermes gateway")
+             sys.exit(1)
+         if supports_systemd_services():
+             if is_wsl():
+-                print_warning("WSL detected — systemd services may not survive WSL restarts.")
+-                print_info("  Consider running in foreground instead: hermes gateway run")
+-                print_info("  Or use tmux/screen for persistence: tmux new -s hermes 'hermes gateway run'")
++                print_warning("检测到 WSL，systemd 服务在 WSL 重启后可能不会保留。")
++                print_info("  可考虑改为前台运行：hermes gateway run")
++                print_info("  或使用 tmux/screen 保持常驻：tmux new -s hermes 'hermes gateway run'")
+                 print()
+             systemd_install(force=force, system=system, run_as_user=run_as_user)
+         elif is_macos():
+             launchd_install(force)
+         elif is_wsl():
+-            print("WSL detected but systemd is not running.")
+-            print("Either enable systemd (add systemd=true to /etc/wsl.conf and restart WSL)")
+-            print("or run the gateway in foreground mode:")
++            print("检测到 WSL，但 systemd 没有运行。")
++            print("你可以启用 systemd（在 /etc/wsl.conf 中添加 systemd=true，然后重启 WSL）")
++            print("或者把 gateway 以前台方式运行：")
+             print()
+-            print("  hermes gateway run                              # direct foreground")
+-            print("  tmux new -s hermes 'hermes gateway run'         # persistent via tmux")
+-            print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # background")
++            print("  hermes gateway run                              # 直接前台运行")
++            print("  tmux new -s hermes 'hermes gateway run'         # 通过 tmux 常驻")
++            print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # 后台运行")
+             sys.exit(1)
+         elif is_container():
+-            print("Service installation is not needed inside a Docker container.")
+-            print("The container runtime is your service manager — use Docker restart policies instead:")
++            print("Docker 容器内通常不需要安装服务。")
++            print("容器运行时本身就是你的服务管理器，建议使用 Docker 的重启策略：")
+             print()
+-            print("  docker run --restart unless-stopped ...   # auto-restart on crash/reboot")
+-            print("  docker restart <container>                # manual restart")
++            print("  docker run --restart unless-stopped ...   # 崩溃/重启后自动拉起")
++            print("  docker restart <container>                # 手动重启")
+             print()
+-            print("To run the gateway: hermes gateway run")
++            print("运行 gateway：hermes gateway run")
+             sys.exit(0)
+         else:
+-            print("Service installation not supported on this platform.")
+-            print("Run manually: hermes gateway run")
++            print("当前平台不支持安装服务。")
++            print("请手动运行：hermes gateway run")
+             sys.exit(1)
+     
+     elif subcmd == "uninstall":
+@@ -4618,22 +4626,22 @@ def _gateway_command_inner(args):
+             return
+         system = getattr(args, 'system', False)
+         if is_termux():
+-            print("Gateway service uninstall is not supported on Termux because there is no managed service to remove.")
+-            print("Stop manual runs with: hermes gateway stop")
++            print("Termux 不支持卸载 gateway 服务，因为本身没有托管服务可移除。")
++            print("手动运行的实例可用下面的命令停止：hermes gateway stop")
+             sys.exit(1)
+         if supports_systemd_services():
+             systemd_uninstall(system=system)
+         elif is_macos():
+             launchd_uninstall()
+         elif is_container():
+-            print("Service uninstall is not applicable inside a Docker container.")
+-            print("To stop the gateway, stop or remove the container:")
++            print("Docker 容器内不适用服务卸载。")
++            print("如果要停止 gateway，请停止或删除容器：")
+             print()
+             print("  docker stop <container>")
+             print("  docker rm <container>")
+             sys.exit(0)
+         else:
+-            print("Not supported on this platform.")
++            print("当前平台不支持该操作。")
+             sys.exit(1)
+ 
+     elif subcmd == "start":
+@@ -4644,38 +4652,38 @@ def _gateway_command_inner(args):
+             # Kill all stale gateway processes across all profiles before starting
+             killed = kill_gateway_processes(all_profiles=True)
+             if killed:
+-                print(f"✓ Killed {killed} stale gateway process(es) across all profiles")
++                print(f"✓ 已清理所有 profile 中的 {killed} 个残留 gateway 进程")
+                 _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
+ 
+         if is_termux():
+-            print("Gateway service start is not supported on Termux because there is no system service manager.")
+-            print("Run manually: hermes gateway")
++            print("Termux 不支持以服务方式启动 gateway，因为没有系统服务管理器。")
++            print("请手动运行：hermes gateway")
+             sys.exit(1)
+         if supports_systemd_services():
+             systemd_start(system=system)
+         elif is_macos():
+             launchd_start()
+         elif is_wsl():
+-            print("WSL detected but systemd is not available.")
+-            print("Run the gateway in foreground mode instead:")
++            print("检测到 WSL，但当前没有可用的 systemd。")
++            print("建议把 gateway 以前台方式运行：")
+             print()
+-            print("  hermes gateway run                              # direct foreground")
+-            print("  tmux new -s hermes 'hermes gateway run'         # persistent via tmux")
+-            print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # background")
++            print("  hermes gateway run                              # 直接前台运行")
++            print("  tmux new -s hermes 'hermes gateway run'         # 通过 tmux 常驻")
++            print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # 后台运行")
+             print()
+-            print("To enable systemd: add systemd=true to /etc/wsl.conf and run 'wsl --shutdown' from PowerShell.")
++            print("如果要启用 systemd：在 /etc/wsl.conf 中加入 systemd=true，然后在 PowerShell 中执行 'wsl --shutdown'。")
+             sys.exit(1)
+         elif is_container():
+-            print("Service start is not applicable inside a Docker container.")
+-            print("The gateway runs as the container's main process.")
++            print("Docker 容器内不适用服务启动。")
++            print("gateway 通常作为容器主进程运行。")
+             print()
+-            print("  docker start <container>     # start a stopped container")
+-            print("  docker restart <container>   # restart a running container")
++            print("  docker start <container>     # 启动已停止的容器")
++            print("  docker restart <container>   # 重启正在运行的容器")
+             print()
+-            print("Or run the gateway directly: hermes gateway run")
++            print("或者直接运行 gateway：hermes gateway run")
+             sys.exit(0)
+         else:
+-            print("Not supported on this platform.")
++            print("当前平台不支持该操作。")
+             sys.exit(1)
+ 
+     elif subcmd == "stop":
+@@ -4700,9 +4708,9 @@ def _gateway_command_inner(args):
+             killed = kill_gateway_processes(all_profiles=True)
+             total = killed + (1 if service_available else 0)
+             if total:
+-                print(f"✓ Stopped {total} gateway process(es) across all profiles")
++                print(f"✓ 已停止所有 profile 中的 {total} 个 gateway 进程")
+             else:
+-                print("✗ No gateway processes found")
++                print("✗ 未发现 gateway 进程")
+         else:
+             # Default: stop only the current profile's gateway
+             service_available = False
+@@ -4722,11 +4730,11 @@ def _gateway_command_inner(args):
+             if not service_available:
+                 # No systemd/launchd — use profile-scoped PID file
+                 if stop_profile_gateway():
+-                    print("✓ Stopped gateway for this profile")
++                    print("✓ 已停止当前 profile 的 gateway")
+                 else:
+-                    print("✗ No gateway running for this profile")
++                    print("✗ 当前 profile 没有运行中的 gateway")
+             else:
+-                print(f"✓ Stopped {get_service_name()} service")
++                print(f"✓ 已停止 {get_service_name()} 服务")
+     
+     elif subcmd == "restart":
+         # Try service first, fall back to killing and restarting
+@@ -4753,11 +4761,11 @@ def _gateway_command_inner(args):
+             killed = kill_gateway_processes(all_profiles=True)
+             total = killed + (1 if service_stopped else 0)
+             if total:
+-                print(f"✓ Stopped {total} gateway process(es) across all profiles")
++                print(f"✓ 已停止所有 profile 中的 {total} 个 gateway 进程")
+             _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
+ 
+             # Start the current profile's service fresh
+-            print("Starting gateway...")
++            print("正在启动 gateway...")
+             if supports_systemd_services() and (get_systemd_unit_path(system=False).exists() or get_systemd_unit_path(system=True).exists()):
+                 systemd_start(system=system)
+             elif is_macos() and get_launchd_plist_path().exists():
+@@ -4789,30 +4797,30 @@ def _gateway_command_inner(args):
+                     import getpass
+                     _username = getpass.getuser()
+                     print()
+-                    print("⚠ Cannot restart gateway as a service — linger is not enabled.")
+-                    print("  The gateway user service requires linger to function on headless servers.")
++                    print("⚠ 无法以服务方式重启 gateway，因为 linger 尚未启用。")
++                    print("  在无头服务器上，gateway 用户服务需要依赖 linger 才能正常工作。")
+                     print()
+-                    print(f"  Run:  sudo loginctl enable-linger {_username}")
++                    print(f"  运行：sudo loginctl enable-linger {_username}")
+                     print()
+-                    print("  Then restart the gateway:")
++                    print("  然后重新执行 gateway 重启：")
+                     print("    hermes gateway restart")
+                     return
+ 
+             if service_configured:
+                 print()
+-                print("✗ Gateway service restart failed.")
+-                print("  The service definition exists, but the service manager did not recover it.")
+-                print("  Fix the service, then retry: hermes gateway start")
++                print("✗ Gateway 服务重启失败。")
++                print("  服务定义存在，但服务管理器没有把它恢复起来。")
++                print("  请先修复服务，再重试：hermes gateway start")
+                 sys.exit(1)
+ 
+             # Manual restart: stop only this profile's gateway
+             if stop_profile_gateway():
+-                print("✓ Stopped gateway for this profile")
++                print("✓ 已停止当前 profile 的 gateway")
+ 
+             _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
+ 
+             # Start fresh
+-            print("Starting gateway...")
++            print("正在启动 gateway...")
+             run_gateway(verbose=0)
+     
+     elif subcmd == "status":
+@@ -4832,45 +4840,45 @@ def _gateway_command_inner(args):
+             # Check for manually running processes
+             pids = list(snapshot.gateway_pids)
+             if pids:
+-                print(f"✓ Gateway is running (PID: {', '.join(map(str, pids))})")
+-                print("  (Running manually, not as a system service)")
++                print(f"✓ Gateway 正在运行（PID: {', '.join(map(str, pids))}）")
++                print("  （手动运行中，不是系统服务）")
+                 runtime_lines = _runtime_health_lines()
+                 if runtime_lines:
+                     print()
+-                    print("Recent gateway health:")
++                    print("最近的 gateway 健康状态：")
+                     for line in runtime_lines:
+                         print(f"  {line}")
+                 print()
+                 if is_termux():
+-                    print("Termux note:")
+-                    print("  Android may stop background jobs when Termux is suspended")
++                    print("Termux 提示：")
++                    print("  Termux 被挂起时，Android 可能会停止后台任务")
+                 elif is_wsl():
+-                    print("WSL note:")
+-                    print("  The gateway is running in foreground/manual mode (recommended for WSL).")
+-                    print("  Use tmux or screen for persistence across terminal closes.")
++                    print("WSL 提示：")
++                    print("  Gateway 当前以前台/手动模式运行（这是 WSL 下推荐的方式）。")
++                    print("  可使用 tmux 或 screen 在关闭终端后继续保持运行。")
+                 else:
+-                    print("To install as a service:")
++                    print("如需安装为服务：")
+                     print("  hermes gateway install")
+                     print("  sudo hermes gateway install --system")
+             else:
+-                print("✗ Gateway is not running")
++                print("✗ Gateway 未运行")
+                 runtime_lines = _runtime_health_lines()
+                 if runtime_lines:
+                     print()
+-                    print("Recent gateway health:")
++                    print("最近的 gateway 健康状态：")
+                     for line in runtime_lines:
+                         print(f"  {line}")
+                 print()
+-                print("To start:")
+-                print("  hermes gateway run      # Run in foreground")
++                print("启动方式：")
++                print("  hermes gateway run      # 前台运行")
+                 if is_termux():
+-                    print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # Best-effort background start")
++                    print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # 尽力而为的后台启动")
+                 elif is_wsl():
+-                    print("  tmux new -s hermes 'hermes gateway run'         # persistent via tmux")
+-                    print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # background")
++                    print("  tmux new -s hermes 'hermes gateway run'         # 通过 tmux 常驻")
++                    print("  nohup hermes gateway run > ~/.hermes/logs/gateway.log 2>&1 &  # 后台运行")
+                 else:
+-                    print("  hermes gateway install  # Install as user service")
+-                    print("  sudo hermes gateway install --system  # Install as boot-time system service")
++                    print("  hermes gateway install  # 安装为用户服务")
++                    print("  sudo hermes gateway install --system  # 安装为开机启动的系统服务")
+ 
+         # Show other profiles' gateway status for multi-profile awareness
+         _print_other_profiles_gateway_status()
+@@ -4885,6 +4893,6 @@ def _gateway_command_inner(args):
+         dry_run = getattr(args, 'dry_run', False)
+         yes = getattr(args, 'yes', False)
+         if not supports_systemd_services() and not is_macos():
+-            print("Legacy unit migration only applies to systemd-based Linux hosts.")
++            print("旧版 unit 迁移只适用于基于 systemd 的 Linux 主机。")
+             return
+         remove_legacy_hermes_units(interactive=not yes, dry_run=dry_run)
+diff --git a/hermes_cli/main.py b/hermes_cli/main.py
+index 062cf5b..1fa95f1 100644
+--- a/hermes_cli/main.py
++++ b/hermes_cli/main.py
+@@ -1786,11 +1786,12 @@ def select_provider_and_model(args=None):
+     from hermes_cli.models import CANONICAL_PROVIDERS, _PROVIDER_LABELS
+ 
+     provider_labels = dict(_PROVIDER_LABELS)  # derive from canonical list
+-    active_label = provider_labels.get(active, active) if active else "none"
++    from hermes_cli.zh_patch import zh
++    active_label = provider_labels.get(active, active) if active else zh("none")
+ 
+     print()
+-    print(f"  Current model:    {current_model}")
+-    print(f"  Active provider:  {active_label}")
++    print(f"  {zh('Current model:'):<14} {zh(current_model)}")
++    print(f"  {zh('Active provider:'):<14} {active_label}")
+     print()
+ 
+     # Step 1: Provider selection — flat list from CANONICAL_PROVIDERS
+@@ -1933,7 +1934,7 @@ def select_provider_and_model(args=None):
+         default=default_idx,
+     )
+     if provider_idx is None or ordered[provider_idx][0] == "cancel":
+-        print("No change.")
++        print("????")
+         return
+ 
+     selected_provider = ordered[provider_idx][0]
+@@ -2409,10 +2410,18 @@ def _prompt_provider_choice(choices, *, default=0):
+     stdin, non-TTY environments).  Returns the selected index, or None
+     if the user cancels.
+     """
++    try:
++        from hermes_cli.zh_patch import zh_menu
++    except ImportError:
++        def zh_menu(question, choices, description=None):
++            return question, list(choices), description
++
++    question, display_choices, _ = zh_menu("Select provider:", choices)
++
+     try:
+         from hermes_cli.setup import _curses_prompt_choice
+ 
+-        idx = _curses_prompt_choice("Select provider:", choices, default)
++        idx = _curses_prompt_choice(question, display_choices, default)
+         if idx >= 0:
+             print()
+             return idx
+@@ -2420,8 +2429,8 @@ def _prompt_provider_choice(choices, *, default=0):
+         pass
+ 
+     # Fallback: numbered list
+-    print("Select provider:")
+-    for i, c in enumerate(choices, 1):
++    print(question)
++    for i, c in enumerate(display_choices, 1):
+         marker = "→" if i - 1 == default else " "
+         print(f"  {marker} {i}. {c}")
+     print()
+@@ -2443,6 +2452,8 @@ def _prompt_provider_choice(choices, *, default=0):
+ 
+ def _model_flow_openrouter(config, current_model=""):
+     """OpenRouter provider: ensure API key, then pick model."""
++    from hermes_cli.zh_patch import zh
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         _prompt_model_selection,
+         _save_model_choice,
+@@ -2452,21 +2463,21 @@ def _model_flow_openrouter(config, current_model=""):
+ 
+     api_key = get_env_value("OPENROUTER_API_KEY")
+     if not api_key:
+-        print("No OpenRouter API key configured.")
+-        print("Get one at: https://openrouter.ai/keys")
++        print("未配置 OpenRouter API 密钥。")
++        print("可在这里获取：https://openrouter.ai/keys")
+         print()
+         try:
+             import getpass
+ 
+-            key = getpass.getpass("OpenRouter API key (or Enter to cancel): ").strip()
++            key = getpass.getpass("OpenRouter API 密钥（按 Enter 取消）: ").strip()
+         except (KeyboardInterrupt, EOFError):
+             print()
+             return
+         if not key:
+-            print("Cancelled.")
++            print("已取消。")
+             return
+         save_env_value("OPENROUTER_API_KEY", key)
+-        print("API key saved.")
++        print("API 密钥已保存。")
+         print()
+ 
+     from hermes_cli.models import model_ids, get_pricing_for_provider
+@@ -2495,9 +2506,9 @@ def _model_flow_openrouter(config, current_model=""):
+         model["api_mode"] = "chat_completions"
+         save_config(cfg)
+         deactivate_provider()
+-        print(f"Default model set to: {selected} (via OpenRouter)")
++        print(f"默认模型已设置为：{selected}（通过 OpenRouter）")
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def _model_flow_ai_gateway(config, current_model=""):
+@@ -2511,24 +2522,24 @@ def _model_flow_ai_gateway(config, current_model=""):
+ 
+     api_key = get_env_value("AI_GATEWAY_API_KEY")
+     if not api_key:
+-        print("No Vercel AI Gateway API key configured.")
++        print("未配置 Vercel AI Gateway API 密钥。")
+         print(
+-            "Create API key here: https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway&title=AI+Gateway"
++            "可在这里创建 API 密钥：https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway&title=AI+Gateway"
+         )
+-        print("Add a payment method to get $5 in free credits.")
++        print("添加付款方式后可获得 5 美元免费额度。")
+         print()
+         try:
+             import getpass
+ 
+-            key = getpass.getpass("AI Gateway API key (or Enter to cancel): ").strip()
++            key = getpass.getpass("AI Gateway API 密钥（按 Enter 取消）：").strip()
+         except (KeyboardInterrupt, EOFError):
+             print()
+             return
+         if not key:
+-            print("Cancelled.")
++            print("已取消。")
+             return
+         save_env_value("AI_GATEWAY_API_KEY", key)
+-        print("API key saved.")
++        print("API 密钥已保存。")
+         print()
+ 
+     from hermes_cli.models import ai_gateway_model_ids, get_pricing_for_provider
+@@ -2554,9 +2565,9 @@ def _model_flow_ai_gateway(config, current_model=""):
+         model["api_mode"] = "chat_completions"
+         save_config(cfg)
+         deactivate_provider()
+-        print(f"Default model set to: {selected} (via Vercel AI Gateway)")
++        print(f"默认模型已设置为：{selected}（通过 Vercel AI Gateway）")
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def _model_flow_nous(config, current_model="", args=None):
+@@ -2582,7 +2593,7 @@ def _model_flow_nous(config, current_model="", args=None):
+ 
+     state = get_provider_auth_state("nous")
+     if not state or not state.get("access_token"):
+-        print("Not logged into Nous Portal. Starting login...")
++        print("尚未登录 Nous Portal，正在开始登录...")
+         print()
+         try:
+             mock_args = argparse.Namespace(
+@@ -2603,10 +2614,10 @@ def _model_flow_nous(config, current_model="", args=None):
+             except Exception:
+                 pass
+         except SystemExit:
+-            print("Login cancelled or failed.")
++            print("登录已取消或失败。")
+             return
+         except Exception as exc:
+-            print(f"Login failed: {exc}")
++            print(f"登录失败：{exc}")
+             return
+         # login_nous already handles model selection + config update
+         return
+@@ -2633,8 +2644,8 @@ def _model_flow_nous(config, current_model="", args=None):
+         relogin = isinstance(exc, AuthError) and exc.relogin_required
+         msg = format_auth_error(exc) if isinstance(exc, AuthError) else str(exc)
+         if relogin:
+-            print(f"Session expired: {msg}")
+-            print("Re-authenticating with Nous Portal...\n")
++            print(f"会话已过期：{msg}")
++            print("正在重新认证 Nous Portal...\n")
+             try:
+                 mock_args = argparse.Namespace(
+                     portal_url=None,
+@@ -2648,9 +2659,9 @@ def _model_flow_nous(config, current_model="", args=None):
+                 )
+                 _login_nous(mock_args, PROVIDER_REGISTRY["nous"])
+             except Exception as login_exc:
+-                print(f"Re-login failed: {login_exc}")
++                print(f"重新登录失败：{login_exc}")
+             return
+-        print(f"Could not verify credentials: {msg}")
++        print(f"无法验证凭据：{msg}")
+         return
+ 
+     # Fetch live pricing (non-blocking — returns empty dict on failure)
+@@ -2668,7 +2679,7 @@ def _model_flow_nous(config, current_model="", args=None):
+         )
+ 
+     if not model_ids and not unavailable_models:
+-        print("No models available for Nous Portal after filtering.")
++        print("筛选后没有可用于 Nous Portal 的模型。")
+         return
+ 
+     # Resolve portal URL for upgrade links (may differ on staging)
+@@ -2681,16 +2692,16 @@ def _model_flow_nous(config, current_model="", args=None):
+         pass
+ 
+     if free_tier and not model_ids:
+-        print("No free models currently available.")
++        print("当前没有可用的免费模型。")
+         if unavailable_models:
+             from hermes_cli.auth import DEFAULT_NOUS_PORTAL_URL
+ 
+             _url = (_nous_portal_url or DEFAULT_NOUS_PORTAL_URL).rstrip("/")
+-            print(f"Upgrade at {_url} to access paid models.")
++            print(f"可前往 {_url} 升级以访问付费模型。")
+         return
+ 
+     print(
+-        f'Showing {len(model_ids)} curated models — use "Enter custom model name" for others.'
++        f'显示 {len(model_ids)} 个精选模型；其他模型可选择“输入自定义模型名称”。'
+     )
+ 
+     selected = _prompt_model_selection(
+@@ -2724,11 +2735,11 @@ def _model_flow_nous(config, current_model="", args=None):
+             save_env_value("OPENAI_BASE_URL", "")
+             save_env_value("OPENAI_API_KEY", "")
+         save_config(config)
+-        print(f"Default model set to: {selected} (via Nous Portal)")
++        print(f"默认模型已设置为：{selected}（通过 Nous Portal）")
+         # Offer Tool Gateway enablement for paid subscribers
+         prompt_enable_tool_gateway(config)
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def _model_flow_openai_codex(config, current_model=""):
+@@ -2816,9 +2827,9 @@ def _model_flow_openai_codex(config, current_model=""):
+     if selected:
+         _save_model_choice(selected)
+         _update_config_for_provider("openai-codex", DEFAULT_CODEX_BASE_URL)
+-        print(f"Default model set to: {selected} (via OpenAI Codex)")
++        print(f"默认模型已设置为：{selected}（通过 OpenAI Codex）")
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ _DEFAULT_QWEN_PORTAL_MODELS = [
+@@ -2841,13 +2852,13 @@ def _model_flow_qwen_oauth(_config, current_model=""):
+ 
+     status = get_qwen_auth_status()
+     if not status.get("logged_in"):
+-        print("Not logged into Qwen CLI OAuth.")
+-        print("Run: qwen auth qwen-oauth")
++        print("尚未登录 Qwen CLI OAuth。")
++        print("请运行：qwen auth qwen-oauth")
+         auth_file = status.get("auth_file")
+         if auth_file:
+-            print(f"Expected credentials file: {auth_file}")
++            print(f"预期的凭据文件：{auth_file}")
+         if status.get("error"):
+-            print(f"Error: {status.get('error')}")
++            print(f"错误：{status.get('error')}")
+         return
+ 
+     # Try live model discovery, fall back to curated list.
+@@ -2946,12 +2957,12 @@ def _model_flow_google_gemini_cli(_config, current_model=""):
+     print("   for the lowest-risk experience.")
+     print()
+     try:
+-        proceed = input("Continue with OAuth login? [y/N]: ").strip().lower()
++        proceed = input("继续进行 OAuth 登录吗？ [y/N]: ").strip().lower()
+     except (EOFError, KeyboardInterrupt):
+-        print("Cancelled.")
++        print("已取消。")
+         return
+     if proceed not in {"y", "yes"}:
+-        print("Cancelled.")
++        print("已取消。")
+         return
+ 
+     status = get_gemini_oauth_auth_status()
+@@ -2962,7 +2973,7 @@ def _model_flow_google_gemini_cli(_config, current_model=""):
+             env_project = resolve_project_id_from_env()
+             start_oauth_flow(force_relogin=True, project_id=env_project)
+         except Exception as exc:
+-            print(f"OAuth login failed: {exc}")
++            print(f"OAuth 登录失败：{exc}")
+             return
+ 
+     # Verify creds resolve + trigger project discovery
+@@ -2970,13 +2981,13 @@ def _model_flow_google_gemini_cli(_config, current_model=""):
+         creds = resolve_gemini_oauth_runtime_credentials(force_refresh=False)
+         project_id = creds.get("project_id", "")
+         if project_id:
+-            print(f"  Using GCP project: {project_id}")
++            print(f"  使用的 GCP 项目：{project_id}")
+         else:
+             print(
+-                "  No GCP project configured — free tier will be auto-provisioned on first request."
++                "  未配置 GCP 项目，首次请求时会自动启用免费层。"
+             )
+     except Exception as exc:
+-        print(f"Failed to resolve Gemini credentials: {exc}")
++        print(f"解析 Gemini 凭据失败：{exc}")
+         return
+ 
+     models = list(_PROVIDER_MODELS.get("google-gemini-cli") or [])
+@@ -2988,10 +2999,10 @@ def _model_flow_google_gemini_cli(_config, current_model=""):
+             "google-gemini-cli", DEFAULT_GEMINI_CLOUDCODE_BASE_URL
+         )
+         print(
+-            f"Default model set to: {selected} (via Google Gemini OAuth / Code Assist)"
++            f"默认模型已设置为：{selected}（通过 Google Gemini OAuth / Code Assist）"
+         )
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def _model_flow_custom(config):
+@@ -3006,34 +3017,34 @@ def _model_flow_custom(config):
+     current_url = get_env_value("OPENAI_BASE_URL") or ""
+     current_key = get_env_value("OPENAI_API_KEY") or ""
+ 
+-    print("Custom OpenAI-compatible endpoint configuration:")
++    print("自定义 OpenAI 兼容端点配置：")
+     if current_url:
+-        print(f"  Current URL: {current_url}")
++        print(f"  当前 URL：{current_url}")
+     if current_key:
+-        print(f"  Current key: {current_key[:8]}...")
++        print(f"  当前密钥：{current_key[:8]}...")
+     print()
+ 
+     try:
+         base_url = input(
+-            f"API base URL [{current_url or 'e.g. https://api.example.com/v1'}]: "
++            f"API 基础 URL [{current_url or '例如 https://api.example.com/v1'}]: "
+         ).strip()
+         import getpass
+ 
+         api_key = getpass.getpass(
+-            f"API key [{current_key[:8] + '...' if current_key else 'optional'}]: "
++            f"API key [{current_key[:8] + '...' if current_key else '可选'}]: "
+         ).strip()
+     except (KeyboardInterrupt, EOFError):
+-        print("\nCancelled.")
++        print("\n已取消。")
+         return
+ 
+     if not base_url and not current_url:
+-        print("No URL provided. Cancelled.")
++        print("未提供 URL，已取消。")
+         return
+ 
+     # Validate URL format
+     effective_url = base_url or current_url
+     if not effective_url.startswith(("http://", "https://")):
+-        print(f"Invalid URL: {effective_url} (must start with http:// or https://)")
++        print(f"无效的 URL：{effective_url}（必须以 http:// 或 https:// 开头）")
+         return
+ 
+     effective_key = api_key or current_key
+@@ -3048,18 +3059,18 @@ def _model_flow_custom(config):
+     )
+     if _looks_local and not _url_lower.endswith("/v1"):
+         print()
+-        print(f"  Hint: Did you mean to add /v1 at the end?")
+-        print(f"  Most local model servers (Ollama, vLLM, llama.cpp) require it.")
+-        print(f"  e.g. {effective_url.rstrip('/')}/v1")
++        print("  提示：你可能需要在末尾补上 /v1。")
++        print("  大多数本地模型服务（Ollama、vLLM、llama.cpp）都要求这样写。")
++        print(f"  例如：{effective_url.rstrip('/')}/v1")
+         try:
+-            _add_v1 = input("  Add /v1? [Y/n]: ").strip().lower()
++            _add_v1 = input("  添加 /v1 吗？ [Y/n]: ").strip().lower()
+         except (KeyboardInterrupt, EOFError):
+             _add_v1 = "n"
+         if _add_v1 in ("", "y", "yes"):
+             effective_url = effective_url.rstrip("/") + "/v1"
+             if base_url:
+                 base_url = effective_url
+-            print(f"  Updated URL: {effective_url}")
++            print(f"  已更新 URL：{effective_url}")
+         print()
+ 
+     from hermes_cli.models import probe_api_models
+@@ -3067,65 +3078,65 @@ def _model_flow_custom(config):
+     probe = probe_api_models(effective_key, effective_url)
+     if probe.get("used_fallback") and probe.get("resolved_base_url"):
+         print(
+-            f"Warning: endpoint verification worked at {probe['resolved_base_url']}/models, "
+-            f"not the exact URL you entered. Saving the working base URL instead."
++            f"警告：端点验证是在 {probe['resolved_base_url']}/models 成功的，"
++            f"而不是你输入的精确 URL。将保存可正常工作的基础 URL。"
+         )
+         effective_url = probe["resolved_base_url"]
+         if base_url:
+             base_url = effective_url
+     elif probe.get("models") is not None:
+         print(
+-            f"Verified endpoint via {probe.get('probed_url')} "
+-            f"({len(probe.get('models') or [])} model(s) visible)"
++            f"已通过 {probe.get('probed_url')} 验证端点"
++            f"（可见 {len(probe.get('models') or [])} 个模型）"
+         )
+     else:
+         print(
+-            f"Warning: could not verify this endpoint via {probe.get('probed_url')}. "
+-            f"Hermes will still save it."
++            f"警告：无法通过 {probe.get('probed_url')} 验证这个端点。"
++            f"Hermes 仍会保存它。"
+         )
+         if probe.get("suggested_base_url"):
+             suggested = probe["suggested_base_url"]
+             if suggested.endswith("/v1"):
+                 print(
+-                    f"  If this server expects /v1 in the path, try base URL: {suggested}"
++                    f"  如果这个服务要求路径里带 /v1，可以尝试基础 URL：{suggested}"
+                 )
+             else:
+-                print(f"  If /v1 should not be in the base URL, try: {suggested}")
++                print(f"  如果基础 URL 不该包含 /v1，可以尝试：{suggested}")
+ 
+     # Select model — use probe results when available, fall back to manual input
+     model_name = ""
+     detected_models = probe.get("models") or []
+     try:
+         if len(detected_models) == 1:
+-            print(f"  Detected model: {detected_models[0]}")
+-            confirm = input("  Use this model? [Y/n]: ").strip().lower()
++            print(f"  检测到模型：{detected_models[0]}")
++            confirm = input("  使用这个模型吗？ [Y/n]: ").strip().lower()
+             if confirm in ("", "y", "yes"):
+                 model_name = detected_models[0]
+             else:
+-                model_name = input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
++                model_name = input("模型名称（例如 gpt-4、llama-3-70b）：").strip()
+         elif len(detected_models) > 1:
+-            print("  Available models:")
++            print("  可用模型：")
+             for i, m in enumerate(detected_models, 1):
+                 print(f"    {i}. {m}")
+             pick = input(
+-                f"  Select model [1-{len(detected_models)}] or type name: "
++                f"  选择模型 [1-{len(detected_models)}]，或直接输入名称："
+             ).strip()
+             if pick.isdigit() and 1 <= int(pick) <= len(detected_models):
+                 model_name = detected_models[int(pick) - 1]
+             elif pick:
+                 model_name = pick
+         else:
+-            model_name = input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
++            model_name = input("模型名称（例如 gpt-4、llama-3-70b）：").strip()
+ 
+         context_length_str = input(
+-            "Context length in tokens [leave blank for auto-detect]: "
++            "上下文长度（tokens）[留空则自动检测]："
+         ).strip()
+ 
+         # Prompt for a display name — shown in the provider menu on future runs
+         default_name = _auto_provider_name(effective_url)
+-        display_name = input(f"Display name [{default_name}]: ").strip() or default_name
++        display_name = input(f"显示名称 [{default_name}]：").strip() or default_name
+     except (KeyboardInterrupt, EOFError):
+-        print("\nCancelled.")
++        print("\n已取消。")
+         return
+ 
+     context_length = None
+@@ -3139,7 +3150,7 @@ def _model_flow_custom(config):
+             if context_length <= 0:
+                 context_length = None
+         except ValueError:
+-            print(f"Invalid context length: {context_length_str} — will auto-detect.")
++            print(f"无效的上下文长度：{context_length_str}，将自动检测。")
+             context_length = None
+ 
+     if model_name:
+@@ -3165,7 +3176,7 @@ def _model_flow_custom(config):
+         # the stale values from its own config dict (#4172).
+         config["model"] = dict(model)
+ 
+-        print(f"Default model set to: {model_name} (via {effective_url})")
++        print(f"默认模型已设置为：{model_name}（通过 {effective_url}）")
+     else:
+         if base_url or api_key:
+             deactivate_provider()
+@@ -3180,7 +3191,7 @@ def _model_flow_custom(config):
+             _caller_model["api_key"] = effective_key
+         _caller_model.pop("api_mode", None)
+         config["model"] = _caller_model
+-        print("Endpoint saved. Use `/model` in chat or `hermes model` to set a model.")
++        print("端点已保存。可在聊天中使用 `/model`，或运行 `hermes model` 设置模型。")
+ 
+     # Auto-save to custom_providers so it appears in the menu next time
+     _save_custom_provider(
+@@ -3505,10 +3516,10 @@ def _remove_custom_provider(config):
+     cfg = load_config()
+     providers = cfg.get("custom_providers") or []
+     if not isinstance(providers, list) or not providers:
+-        print("No custom providers configured.")
++        print("当前没有配置自定义提供商。")
+         return
+ 
+-    print("Remove a custom provider:\n")
++    print("删除一个自定义提供商：\n")
+ 
+     choices = []
+     for entry in providers:
+@@ -3519,7 +3530,7 @@ def _remove_custom_provider(config):
+             choices.append(f"{name} ({short_url})")
+         else:
+             choices.append(str(entry))
+-    choices.append("Cancel")
++    choices.append("取消")
+ 
+     try:
+         from simple_term_menu import TerminalMenu
+@@ -3532,7 +3543,7 @@ def _remove_custom_provider(config):
+             menu_highlight_style=("fg_red",),
+             cycle_cursor=True,
+             clear_screen=False,
+-            title="Select provider to remove:",
++            title="选择要删除的提供商：",
+         )
+         idx = menu.show()
+         from hermes_cli.curses_ui import flush_stdin
+@@ -3544,13 +3555,13 @@ def _remove_custom_provider(config):
+             print(f"  {i}. {c}")
+         print()
+         try:
+-            val = input(f"Choice [1-{len(choices)}]: ").strip()
++            val = input(f"请选择 [1-{len(choices)}]：").strip()
+             idx = int(val) - 1 if val else None
+         except (ValueError, KeyboardInterrupt, EOFError):
+             idx = None
+ 
+     if idx is None or idx >= len(providers):
+-        print("No change.")
++        print("未更改。")
+         return
+ 
+     removed = providers.pop(idx)
+@@ -3559,7 +3570,7 @@ def _remove_custom_provider(config):
+     removed_name = (
+         removed.get("name", "unnamed") if isinstance(removed, dict) else str(removed)
+     )
+-    print(f'✅ Removed "{removed_name}" from custom providers.')
++    print(f'✅ 已从自定义提供商中删除“{removed_name}”。')
+ 
+ 
+ def _model_flow_named_custom(config, provider_info):
+@@ -3603,13 +3614,13 @@ def _model_flow_named_custom(config, provider_info):
+         if saved_model and saved_model in models:
+             default_idx = models.index(saved_model)
+ 
+-        print(f"Found {len(models)} model(s):\n")
++        print(f"找到 {len(models)} 个模型：\n")
+         try:
+             from simple_term_menu import TerminalMenu
+ 
+             menu_items = [
+-                f"  {m} (current)" if m == saved_model else f"  {m}" for m in models
+-            ] + ["  Cancel"]
++                f"  {m}（当前）" if m == saved_model else f"  {m}" for m in models
++            ] + ["  取消"]
+             menu = TerminalMenu(
+                 menu_items,
+                 cursor_index=default_idx,
+@@ -3618,7 +3629,7 @@ def _model_flow_named_custom(config, provider_info):
+                 menu_highlight_style=("fg_green",),
+                 cycle_cursor=True,
+                 clear_screen=False,
+-                title=f"Select model from {name}:",
++                title=f"从 {name} 中选择模型：",
+             )
+             idx = menu.show()
+             from hermes_cli.curses_ui import flush_stdin
+@@ -3626,44 +3637,44 @@ def _model_flow_named_custom(config, provider_info):
+             flush_stdin()
+             print()
+             if idx is None or idx >= len(models):
+-                print("Cancelled.")
++                print("已取消。")
+                 return
+             model_name = models[idx]
+         except (ImportError, NotImplementedError, OSError, subprocess.SubprocessError):
+             for i, m in enumerate(models, 1):
+-                suffix = " (current)" if m == saved_model else ""
++                suffix = "（当前）" if m == saved_model else ""
+                 print(f"  {i}. {m}{suffix}")
+-            print(f"  {len(models) + 1}. Cancel")
++            print(f"  {len(models) + 1}. 取消")
+             print()
+             try:
+-                val = input(f"Choice [1-{len(models) + 1}]: ").strip()
++                val = input(f"请选择 [1-{len(models) + 1}]：").strip()
+                 if not val:
+-                    print("Cancelled.")
++                    print("已取消。")
+                     return
+                 idx = int(val) - 1
+                 if idx < 0 or idx >= len(models):
+-                    print("Cancelled.")
++                    print("已取消。")
+                     return
+                 model_name = models[idx]
+             except (ValueError, KeyboardInterrupt, EOFError):
+-                print("\nCancelled.")
++                print("\n已取消。")
+                 return
+     elif saved_model:
+-        print("Could not fetch models from endpoint.")
++        print("无法从端点获取模型列表。")
+         try:
+-            model_name = input(f"Model name [{saved_model}]: ").strip() or saved_model
++            model_name = input(f"模型名称 [{saved_model}]：").strip() or saved_model
+         except (KeyboardInterrupt, EOFError):
+-            print("\nCancelled.")
++            print("\n已取消。")
+             return
+     else:
+-        print("Could not fetch models from endpoint. Enter model name manually.")
++        print("无法从端点获取模型列表，请手动输入模型名称。")
+         try:
+-            model_name = input("Model name: ").strip()
++            model_name = input("模型名称：").strip()
+         except (KeyboardInterrupt, EOFError):
+-            print("\nCancelled.")
++            print("\n已取消。")
+             return
+         if not model_name:
+-            print("No model specified. Cancelled.")
++            print("未指定模型，已取消。")
+             return
+ 
+     # Activate and save the model to the custom_providers entry
+@@ -3840,6 +3851,7 @@ def _prompt_reasoning_effort_selection(efforts, current_effort=""):
+ 
+ def _model_flow_copilot(config, current_model=""):
+     """GitHub Copilot flow using env vars, gh CLI, or OAuth device code."""
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         PROVIDER_REGISTRY,
+         _prompt_model_selection,
+@@ -3909,7 +3921,7 @@ def _model_flow_copilot(config, current_model=""):
+                 print()
+                 return
+             if not new_key:
+-                print("  Cancelled.")
++                print("  已取消。")
+                 return
+             # Validate token type
+             try:
+@@ -3925,7 +3937,7 @@ def _model_flow_copilot(config, current_model=""):
+             print("  Token saved.")
+             print()
+         else:
+-            print("  Cancelled.")
++            print("  已取消。")
+             return
+ 
+         creds = resolve_api_key_provider_credentials(provider_id)
+@@ -4019,18 +4031,19 @@ def _model_flow_copilot(config, current_model=""):
+         save_config(cfg)
+         deactivate_provider()
+ 
+-        print(f"Default model set to: {selected} (via {pconfig.name})")
++        print(zh(f"Default model set to: {selected} (via {pconfig.name})"))
+         if reasoning_efforts:
+             if selected_effort == "none":
+                 print("Reasoning disabled for this model.")
+             elif selected_effort:
+                 print(f"Reasoning effort set to: {selected_effort}")
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def _model_flow_copilot_acp(config, current_model=""):
+     """GitHub Copilot ACP flow using the local Copilot CLI."""
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         PROVIDER_REGISTRY,
+         _prompt_model_selection,
+@@ -4115,7 +4128,7 @@ def _model_flow_copilot_acp(config, current_model=""):
+             selected = None
+ 
+     if not selected:
+-        print("No change.")
++        print("未更改。")
+         return
+ 
+     selected = (
+@@ -4139,7 +4152,7 @@ def _model_flow_copilot_acp(config, current_model=""):
+     save_config(cfg)
+     deactivate_provider()
+ 
+-    print(f"Default model set to: {selected} (via {pconfig.name})")
++    print(zh(f"Default model set to: {selected} (via {pconfig.name})"))
+ 
+ 
+ def _prompt_api_key(pconfig, existing_key: str, provider_id: str = "") -> tuple:
+@@ -4181,10 +4194,10 @@ def _prompt_api_key(pconfig, existing_key: str, provider_id: str = "") -> tuple:
+             return "", True
+         new_key = _prompt_new_key(allow_lmstudio_default=True)
+         if not new_key:
+-            print("Cancelled.")
++            print("已取消。")
+             return "", True
+         save_env_value(key_env, new_key)
+-        print("API key saved.")
++        print("API 密钥已保存。")
+         print()
+         return new_key, False
+ 
+@@ -4238,6 +4251,7 @@ def _model_flow_kimi(config, current_model=""):
+         _save_model_choice,
+         deactivate_provider,
+     )
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.config import (
+         get_env_value,
+         save_env_value,
+@@ -4314,7 +4328,7 @@ def _model_flow_kimi(config, current_model=""):
+         deactivate_provider()
+ 
+         endpoint_label = "Kimi Coding" if is_coding_plan else "Moonshot"
+-        print(f"Default model set to: {selected} (via {endpoint_label})")
++        print(zh(f"Default model set to: {selected} (via {endpoint_label})"))
+     else:
+         print("No change.")
+ 
+@@ -4453,6 +4467,7 @@ def _model_flow_bedrock_api_key(config, region, current_model=""):
+     For developers who don't have an AWS account but received a Bedrock API Key
+     from their AWS admin. Works like any OpenAI-compatible endpoint.
+     """
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         _prompt_model_selection,
+         _save_model_choice,
+@@ -4483,7 +4498,7 @@ def _model_flow_bedrock_api_key(config, region, current_model=""):
+             print()
+             return
+         if not api_key:
+-            print("  Cancelled.")
++            print("  已取消。")
+             return
+         save_env_value("AWS_BEARER_TOKEN_BEDROCK", api_key)
+         existing_key = api_key
+@@ -4529,10 +4544,10 @@ def _model_flow_bedrock_api_key(config, region, current_model=""):
+         save_config(cfg)
+         deactivate_provider()
+ 
+-        print(f"  Default model set to: {selected} (via Bedrock API Key, {region})")
++        print(zh(f"  Default model set to: {selected} (via Bedrock API Key, {region})"))
+         print(f"  Endpoint: {mantle_base_url}")
+     else:
+-        print("  No change.")
++        print("  未更改。")
+ 
+ 
+ def _model_flow_bedrock(config, current_model=""):
+@@ -4542,6 +4557,7 @@ def _model_flow_bedrock(config, current_model=""):
+     Auth is handled by the AWS SDK default credential chain (env vars, profile,
+     instance role), so no API key prompt is needed.
+     """
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         _prompt_model_selection,
+         _save_model_choice,
+@@ -4832,15 +4848,13 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
+     effective_base = current_base or pconfig.inference_base_url
+ 
+     try:
+-        override = input(f"Base URL [{effective_base}]: ").strip()
++        override = input(f"基础 URL [{effective_base}]: ").strip()
+     except (KeyboardInterrupt, EOFError):
+         print()
+         override = ""
+     if override and base_url_env:
+         if not override.startswith(("http://", "https://")):
+-            print(
+-                "  Invalid URL — must start with http:// or https://. Keeping current value."
+-            )
++            print("  Invalid URL（无效 URL）- 必须以 http:// 或 https:// 开头。保留当前值。")
+         else:
+             save_env_value(base_url_env, override)
+             effective_base = override
+@@ -4907,7 +4921,7 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
+                 model_list = merged
+             else:
+                 model_list = mdev_models
+-            print(f"  Found {len(model_list)} model(s) from models.dev registry")
++            print(zh(f"  Found {len(model_list)} model(s) from models.dev registry"))
+         elif curated and len(curated) >= 8:
+             # Curated list is substantial — use it directly, skip live probe
+             model_list = curated
+@@ -4921,12 +4935,15 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
+             live_models = fetch_api_models(api_key_for_probe, effective_base)
+             if live_models and len(live_models) >= len(curated):
+                 model_list = live_models
+-                print(f"  Found {len(model_list)} model(s) from {pconfig.name} API")
++                print(zh(f"  Found {len(model_list)} model(s) from {pconfig.name} API"))
+             else:
+                 model_list = curated
+                 if model_list:
+                     print(
+-                        f'  Showing {len(model_list)} curated models — use "Enter custom model name" for others.'
++                        zh(
++                            f'  Showing {len(model_list)} curated models — use '
++                            f'"Enter custom model name" for others.'
++                        )
+                     )
+             # else: no defaults either, will fall through to raw input
+ 
+@@ -4966,9 +4983,9 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
+         save_config(cfg)
+         deactivate_provider()
+ 
+-        print(f"Default model set to: {selected} (via {pconfig.name})")
++        print(zh(f"Default model set to: {selected} (via {pconfig.name})"))
+     else:
+-        print("No change.")
++        print(zh("No change."))
+ 
+ 
+ def _run_anthropic_oauth_flow(save_env_value):
+@@ -5066,6 +5083,7 @@ def _run_anthropic_oauth_flow(save_env_value):
+ 
+ def _model_flow_anthropic(config, current_model=""):
+     """Flow for Anthropic provider — OAuth subscription, API key, or Claude Code creds."""
++    from hermes_cli.zh_patch import zh
+     from hermes_cli.auth import (
+         _prompt_model_selection,
+         _save_model_choice,
+@@ -5160,13 +5178,13 @@ def _model_flow_anthropic(config, current_model=""):
+                 print()
+                 return
+             if not api_key:
+-                print("  Cancelled.")
++                print("  已取消。")
+                 return
+             save_anthropic_api_key(api_key, save_fn=save_env_value)
+             print("  ✓ API key saved.")
+ 
+         else:
+-            print("  No change.")
++            print("  未更改。")
+             return
+     print()
+ 
+@@ -5197,9 +5215,9 @@ def _model_flow_anthropic(config, current_model=""):
+         save_config(cfg)
+         deactivate_provider()
+ 
+-        print(f"Default model set to: {selected} (via Anthropic)")
++        print(zh(f"Default model set to: {selected} (via Anthropic)"))
+     else:
+-        print("No change.")
++        print("未更改。")
+ 
+ 
+ def cmd_login(args):
+diff --git a/hermes_cli/setup.py b/hermes_cli/setup.py
+index f5b8b6c..ca3f74b 100644
+--- a/hermes_cli/setup.py
++++ b/hermes_cli/setup.py
+@@ -32,6 +32,33 @@ logger = logging.getLogger(__name__)
+ PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+ 
+ _DOCS_BASE = "https://hermes-agent.nousresearch.com/docs"
++# HERMES_ZH_PATCH_BEGIN
++try:
++    from hermes_cli.zh_patch import yes_no_value, zh, zh_menu
++except ImportError:
++    def zh(text): return text
++    def zh_menu(question, choices, description=None): return question, list(choices), description
++    def yes_no_value(value):
++        value = (value or "").strip().lower()
++        if value in ("y", "yes"): return True
++        if value in ("n", "no"): return False
++        return None
++# HERMES_ZH_PATCH_END
++
++
++def localize_setup_text(text: str | None) -> str | None:
++    """Return the Chinese setup-menu label for known UI text."""
++    return zh(text)
++
++
++def localize_setup_menu(
++    question: str,
++    choices: list[str],
++    description: str | None = None,
++) -> tuple[str, list[str], str | None]:
++    """Translate setup menu text through the shared defensive dictionary."""
++    return zh_menu(question, choices, description)
++
+ 
+ 
+ def _model_config_dict(config: Dict[str, Any]) -> Dict[str, Any]:
+@@ -152,6 +179,7 @@ from hermes_cli.colors import Colors, color
+ 
+ def print_header(title: str):
+     """Print a section header."""
++    title = zh(title)
+     print()
+     print(color(f"◆ {title}", Colors.CYAN, Colors.BOLD))
+ 
+@@ -196,6 +224,7 @@ def print_noninteractive_setup_guidance(reason: str | None = None) -> None:
+ 
+ def prompt(question: str, default: str = None, password: bool = False) -> str:
+     """Prompt for input with optional default."""
++    question = zh(question)
+     if default:
+         display = f"{question} [{default}]: "
+     else:
+@@ -239,10 +268,11 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
+     Escape keeps the current default (skips the question).
+     Ctrl+C exits the wizard.
+     """
++    question, choices, description = zh_menu(question, choices, description)
+     idx = _curses_prompt_choice(question, choices, default, description=description)
+     if idx >= 0:
+         if idx == default:
+-            print_info("  Skipped (keeping current)")
++            print_info(zh("  Skipped (keeping current)"))
+             print()
+             return default
+         print()
+@@ -256,7 +286,7 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
+         else:
+             print(f"  {marker} {choice}")
+ 
+-    print_info(f"  Enter for default ({default + 1})  Ctrl+C to exit")
++    print_info(zh(f"  Enter for default ({default + 1})  Ctrl+C to exit"))
+ 
+     while True:
+         try:
+@@ -268,9 +298,9 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
+             idx = int(value) - 1
+             if 0 <= idx < len(choices):
+                 return idx
+-            print_error(f"Please enter a number between 1 and {len(choices)}")
++            print_error(zh(f"Please enter a number between 1 and {len(choices)}"))
+         except ValueError:
+-            print_error("Please enter a number")
++            print_error(zh("Please enter a number"))
+         except (KeyboardInterrupt, EOFError):
+             print()
+             sys.exit(1)
+@@ -278,6 +308,7 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
+ 
+ def prompt_yes_no(question: str, default: bool = True) -> bool:
+     """Prompt for yes/no. Ctrl+C exits, empty input returns default."""
++    question = zh(question)
+     default_str = "Y/n" if default else "y/N"
+ 
+     while True:
+@@ -293,10 +324,9 @@ def prompt_yes_no(question: str, default: bool = True) -> bool:
+ 
+         if not value:
+             return default
+-        if value in ("y", "yes"):
+-            return True
+-        if value in ("n", "no"):
+-            return False
++        parsed = yes_no_value(value)
++        if parsed is not None:
++            return parsed
+         print_error("Please enter 'y' or 'n'")
+ 
+ 
+@@ -318,6 +348,9 @@ def prompt_checklist(title: str, items: list, pre_selected: list = None) -> list
+     if pre_selected is None:
+         pre_selected = []
+ 
++    title = zh(title)
++    items = [zh(item) for item in items]
++
+     from hermes_cli.curses_ui import curses_checklist
+ 
+     chosen = curses_checklist(
+@@ -543,15 +576,15 @@ def _print_setup_summary(config: dict, hermes_home):
+     available_count = sum(1 for _, avail, _ in tool_status if avail)
+     total_count = len(tool_status)
+ 
+-    print_info(f"{available_count}/{total_count} tool categories available:")
++    print_info(zh(f"{available_count}/{total_count} tool categories available:"))
+     print()
+ 
+     for name, available, missing_var in tool_status:
+         if available:
+-            print(f"   {color('✓', Colors.GREEN)} {name}")
++            print(f"   {color('✓', Colors.GREEN)} {zh(name)}")
+         else:
+             print(
+-                f"   {color('✗', Colors.RED)} {name} {color(f'(missing {missing_var})', Colors.DIM)}"
++                f"   {color('✗', Colors.RED)} {zh(name)} {color(zh(f'(missing {missing_var})'), Colors.DIM)}"
+             )
+ 
+     print()
+@@ -559,10 +592,10 @@ def _print_setup_summary(config: dict, hermes_home):
+     disabled_tools = [(name, var) for name, avail, var in tool_status if not avail]
+     if disabled_tools:
+         print_warning(
+-            "Some tools are disabled. Run 'hermes setup tools' to configure them,"
++            zh("Some tools are disabled. Run 'hermes setup tools' to configure them,")
+         )
+         from hermes_constants import display_hermes_home as _dhh
+-        print_warning(f"or edit {_dhh()}/.env directly to add the missing API keys.")
++        print_warning(zh(f"or edit {_dhh()}/.env directly to add the missing API keys."))
+         print()
+ 
+     # Done banner
+@@ -574,7 +607,7 @@ def _print_setup_summary(config: dict, hermes_home):
+     )
+     print(
+         color(
+-            "│              ✓ Setup Complete!                          │", Colors.GREEN
++            "│              ✓ 设置完成！                               │", Colors.GREEN
+         )
+     )
+     print(
+@@ -586,44 +619,44 @@ def _print_setup_summary(config: dict, hermes_home):
+ 
+     # Show file locations prominently
+     from hermes_constants import display_hermes_home as _dhh
+-    print(color(f"📁 All your files are in {_dhh()}/:", Colors.CYAN, Colors.BOLD))
++    print(color(zh(f"📁 All your files are in {_dhh()}/:"), Colors.CYAN, Colors.BOLD))
+     print()
+-    print(f"   {color('Settings:', Colors.YELLOW)}  {get_config_path()}")
+-    print(f"   {color('API Keys:', Colors.YELLOW)}  {get_env_path()}")
++    print(f"   {color(zh('Settings:'), Colors.YELLOW)}  {get_config_path()}")
++    print(f"   {color(zh('API Keys:'), Colors.YELLOW)}  {get_env_path()}")
+     print(
+-        f"   {color('Data:', Colors.YELLOW)}      {hermes_home}/cron/, sessions/, logs/"
++        f"   {color(zh('Data:'), Colors.YELLOW)}      {hermes_home}/cron/, sessions/, logs/"
+     )
+     print()
+ 
+     print(color("─" * 60, Colors.DIM))
+     print()
+-    print(color("📝 To edit your configuration:", Colors.CYAN, Colors.BOLD))
++    print(color(f"📝 {zh('To edit your configuration:')}", Colors.CYAN, Colors.BOLD))
+     print()
+-    print(f"   {color('hermes setup', Colors.GREEN)}          Re-run the full wizard")
+-    print(f"   {color('hermes setup model', Colors.GREEN)}    Change model/provider")
+-    print(f"   {color('hermes setup terminal', Colors.GREEN)} Change terminal backend")
+-    print(f"   {color('hermes setup gateway', Colors.GREEN)}  Configure messaging")
+-    print(f"   {color('hermes setup tools', Colors.GREEN)}    Configure tool providers")
++    print(f"   {color('hermes setup', Colors.GREEN)}          {zh('Re-run the full wizard')}")
++    print(f"   {color('hermes setup model', Colors.GREEN)}    {zh('Change model/provider')}")
++    print(f"   {color('hermes setup terminal', Colors.GREEN)} {zh('Change terminal backend')}")
++    print(f"   {color('hermes setup gateway', Colors.GREEN)}  {zh('Configure messaging')}")
++    print(f"   {color('hermes setup tools', Colors.GREEN)}    {zh('Configure tool providers')}")
+     print()
+-    print(f"   {color('hermes config', Colors.GREEN)}         View current settings")
++    print(f"   {color('hermes config', Colors.GREEN)}         {zh('View current settings')}")
+     print(
+-        f"   {color('hermes config edit', Colors.GREEN)}    Open config in your editor"
++        f"   {color('hermes config edit', Colors.GREEN)}    {zh('Open config in your editor')}"
+     )
+     print(f"   {color('hermes config set <key> <value>', Colors.GREEN)}")
+-    print("                          Set a specific value")
++    print(f"                          {zh('Set a specific value')}")
+     print()
+-    print("   Or edit the files directly:")
++    print(f"   {zh('Or edit the files directly:')}")
+     print(f"   {color(f'nano {get_config_path()}', Colors.DIM)}")
+     print(f"   {color(f'nano {get_env_path()}', Colors.DIM)}")
+     print()
+ 
+     print(color("─" * 60, Colors.DIM))
+     print()
+-    print(color("🚀 Ready to go!", Colors.CYAN, Colors.BOLD))
++    print(color(f"🚀 {zh('Ready to go!')}", Colors.CYAN, Colors.BOLD))
+     print()
+-    print(f"   {color('hermes', Colors.GREEN)}              Start chatting")
+-    print(f"   {color('hermes gateway', Colors.GREEN)}      Start messaging gateway")
+-    print(f"   {color('hermes doctor', Colors.GREEN)}       Check for issues")
++    print(f"   {color('hermes', Colors.GREEN)}              {zh('Start chatting')}")
++    print(f"   {color('hermes gateway', Colors.GREEN)}      {zh('Start messaging gateway')}")
++    print(f"   {color('hermes doctor', Colors.GREEN)}       {zh('Check for issues')}")
+     print()
+ 
+ 
+@@ -789,8 +822,8 @@ def setup_model_provider(config: dict, *, quick: bool = False):
+     from hermes_cli.config import load_config, save_config
+ 
+     print_header("Inference Provider")
+-    print_info("Choose how to connect to your main chat model.")
+-    print_info(f"   Guide: {_DOCS_BASE}/integrations/providers")
++    print_info(zh("Choose how to connect to your main chat model."))
++    print_info(f"   {zh('Guide:')} {_DOCS_BASE}/integrations/providers")
+     print()
+ 
+     # Delegate to the shared hermes model flow — handles provider picker,
+@@ -800,11 +833,11 @@ def setup_model_provider(config: dict, *, quick: bool = False):
+         select_provider_and_model()
+     except (SystemExit, KeyboardInterrupt):
+         print()
+-        print_info("Provider setup skipped.")
++        print_info(zh("Provider setup skipped."))
+     except Exception as exc:
+         logger.debug("select_provider_and_model error during setup: %s", exc)
+-        print_warning(f"Provider setup encountered an error: {exc}")
+-        print_info("You can try again later with: hermes model")
++        print_warning(zh(f"Provider setup encountered an error: {exc}"))
++        print_info(zh("You can try again later with: hermes model"))
+ 
+     # Re-sync the wizard's config dict from what cmd_model saved to disk.
+     # This is critical: cmd_model writes to disk via its own load/save cycle,
+@@ -1679,12 +1712,12 @@ def _apply_default_agent_settings(config: dict):
+     })
+ 
+     save_config(config)
+-    print_success("Applied recommended defaults:")
+-    print_info("  Max iterations: 90")
+-    print_info("  Tool progress: all")
+-    print_info("  Compression threshold: 0.50")
+-    print_info("  Session reset: inactivity (1440 min) + daily (4:00)")
+-    print_info("  Run `hermes setup agent` later to customize.")
++    print_success(zh("Applied recommended defaults:"))
++    print_info(zh("  Max iterations: 90"))
++    print_info(zh("  Tool progress: all"))
++    print_info(zh("  Compression threshold: 0.50"))
++    print_info(zh("  Session reset: inactivity (1440 min) + daily (4:00)"))
++    print_info(zh("  Run `hermes setup agent` later to customize."))
+ 
+ 
+ def setup_agent_settings(config: dict):
+@@ -2877,13 +2910,13 @@ def _offer_openclaw_migration(hermes_home: Path) -> bool:
+ 
+     print()
+     print_header("OpenClaw Installation Detected")
+-    print_info(f"Found OpenClaw data at {openclaw_dir}")
+-    print_info("Hermes can preview what would be imported before making any changes.")
++    print_info(f"在 {openclaw_dir} 找到 OpenClaw 数据")
++    print_info("Hermes 可以先预览将导入的内容，不会立即修改。")
+     print()
+ 
+     if not prompt_yes_no("Would you like to see what can be imported?", default=True):
+         print_info(
+-            "Skipping migration. You can run it later with: hermes claw migrate --dry-run"
++            zh("Skipping migration. You can run it later with: hermes claw migrate --dry-run")
+         )
+         return False
+ 
+@@ -3110,7 +3143,7 @@ def run_setup_wizard(args):
+     )
+     print(
+         color(
+-            "│             ⚕ Hermes Agent Setup Wizard                │", Colors.MAGENTA
++            "│             ⚕ Hermes Agent 设置向导                     │", Colors.MAGENTA
+         )
+     )
+     print(
+@@ -3121,12 +3154,12 @@ def run_setup_wizard(args):
+     )
+     print(
+         color(
+-            "│  Let's configure your Hermes Agent installation.       │", Colors.MAGENTA
++            "│  现在开始配置 Hermes Agent 安装。                       │", Colors.MAGENTA
+         )
+     )
+     print(
+         color(
+-            "│  Press Ctrl+C at any time to exit.                     │", Colors.MAGENTA
++            "│  随时按 Ctrl+C 退出。                                  │", Colors.MAGENTA
+         )
+     )
+     print(
+@@ -3271,11 +3304,11 @@ def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
+         save_config(config)
+ 
+     print()
+-    print_success("Setup complete! You're ready to go.")
++    print_success(zh("Setup complete! You're ready to go."))
+     print()
+-    print_info("  Configure all settings:    hermes setup")
++    print_info(f"  {zh('Configure all settings:')}    hermes setup")
+     if gateway_choice != 0:
+-        print_info("  Connect Telegram/Discord:  hermes setup gateway")
++        print_info(f"  {zh('Connect Telegram/Discord:')}  hermes setup gateway")
+     print()
+ 
+     _print_setup_summary(config, hermes_home)
+diff --git a/hermes_cli/tools_config.py b/hermes_cli/tools_config.py
+index b258e15..ee9b8f1 100644
+--- a/hermes_cli/tools_config.py
++++ b/hermes_cli/tools_config.py
+@@ -33,6 +33,15 @@ logger = logging.getLogger(__name__)
+ 
+ PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+ 
++try:
++    from hermes_cli.zh_patch import zh, zh_menu
++except ImportError:  # pragma: no cover - compatibility for partially applied patches
++    def zh(text):
++        return text
++
++    def zh_menu(question, choices, description=None):
++        return question, list(choices), description
++
+ 
+ # ─── UI Helpers (shared with setup.py) ────────────────────────────────────────
+ 
+@@ -1090,6 +1099,7 @@ def _toolset_has_keys(ts_key: str, config: dict = None) -> bool:
+ def _prompt_choice(question: str, choices: list, default: int = 0) -> int:
+     """Single-select menu (arrow keys). Delegates to curses_radiolist."""
+     from hermes_cli.curses_ui import curses_radiolist
++    question, choices, _ = zh_menu(question, choices)
+     return curses_radiolist(question, choices, selected=default, cancel_returns=default)
+ 
+ 
+@@ -1183,9 +1193,10 @@ def _prompt_toolset_checklist(platform_label: str, enabled: Set[str], platform:
+                 return f"Est. tool context: ~{total / 1000:.1f}k tokens"
+             return f"Est. tool context: ~{total} tokens"
+ 
++    title = zh(f"Tools for {platform_label}")
+     chosen = curses_checklist(
+-        f"Tools for {platform_label}",
+-        labels,
++        title,
++        [zh(label) for label in labels],
+         pre_selected,
+         cancel_returns=pre_selected,
+         status_fn=status_fn,
+@@ -2371,8 +2382,8 @@ def _configure_mcp_tools_interactive(config: dict):
+                 pre_selected.add(i)
+ 
+         chosen = curses_checklist(
+-            f"MCP Server: {server_name}  ({len(tools)} tools)",
+-            labels,
++            zh(f"MCP Server: {server_name}  ({len(tools)} tools)"),
++            [zh(label) for label in labels],
+             pre_selected,
+             cancel_returns=pre_selected,
+         )

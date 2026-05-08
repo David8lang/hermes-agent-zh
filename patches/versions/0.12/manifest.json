@@ -1,0 +1,18 @@
+{
+  "hermes_version": "0.12.0",
+  "patch_version": "0.12",
+  "base_channel": "stable",
+  "base_ref": "v2026.4.30",
+  "base_commit": "73bf3ab1b22314ed9dfecbb59242c03742fe72af",
+  "generated_from": "73bf3ab1b22314ed9dfecbb59242c03742fe72af",
+  "source_ref": "v2026.4.30",
+  "source_remote": "https://github.com/NousResearch/hermes-agent.git",
+  "files": [
+    "hermes_cli/config.py",
+    "hermes_cli/gateway.py",
+    "hermes_cli/main.py",
+    "hermes_cli/setup.py",
+    "hermes_cli/tools_config.py",
+    "hermes_cli/zh_patch.py"
+  ]
+}

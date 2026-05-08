@@ -1,0 +1,17 @@
+{
+  "hermes_version": "0.10.0",
+  "patch_version": "0.10",
+  "generated_from": "local 0.10.0 workspace",
+  "source_remote": "local workspace",
+  "source_ref": "0.10.0",
+  "files": [
+    "hermes_cli/setup.py",
+    "hermes_cli/tools_config.py",
+    "hermes_cli/gateway.py",
+    "hermes_cli/main.py",
+    "hermes_cli/auth.py",
+    "hermes_cli/config.py",
+    "setup-hermes.sh",
+    "hermes_cli/zh_patch.py"
+  ]
+}
