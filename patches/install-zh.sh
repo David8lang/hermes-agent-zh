@@ -16,6 +16,7 @@ INSTALL_DIR="$HOME/.hermes/hermes-agent"
 PATCH_REPO="https://raw.githubusercontent.com/David8lang/hermes-agent-zh/main"
 DEFAULT_PATCH_VERSION="0.13"
 GITHUB_SLOW_THRESHOLD_SECONDS="${HERMES_ZH_GITHUB_SLOW_THRESHOLD_SECONDS:-6}"
+SELECTED_PATCH_VERSION=""
 
 TMP_DIR=$(mktemp -d)
 cleanup() { rm -rf "$TMP_DIR"; }
@@ -117,6 +118,36 @@ patch_manifest_available() {
   local patch_version="$1"
 
   curl -fsSL "$PATCH_REPO/patches/versions/$patch_version/manifest.json" -o /dev/null >/dev/null 2>&1
+}
+
+prompt_patch_version_selection() {
+  local patch_version_selection=""
+
+  if ! is_tty_interactive; then
+    SELECTED_PATCH_VERSION="$DEFAULT_PATCH_VERSION"
+    return 0
+  fi
+
+  echo "请选择要安装的汉化版本：" >/dev/tty
+  echo "[1] Hermes Agent 中文汉化（针对 Releases v0.13.0）" >/dev/tty
+  echo "[2] Hermes Agent 中文汉化（针对 Releases v0.12.0）" >/dev/tty
+  echo "[3] Hermes Agent 中文汉化（针对 Releases v0.11.0）" >/dev/tty
+  echo "[4] Hermes Agent 中文汉化（针对 Releases v0.10.0）" >/dev/tty
+  echo "[5] Hermes Agent 中文汉化（针对 Releases v0.9.0）" >/dev/tty
+  echo "" >/dev/tty
+  prompt_via_tty patch_version_selection "默认：1 > "
+
+  case "${patch_version_selection:-1}" in
+    ""|1) SELECTED_PATCH_VERSION="0.13" ;;
+    2) SELECTED_PATCH_VERSION="0.12" ;;
+    3) SELECTED_PATCH_VERSION="0.11" ;;
+    4) SELECTED_PATCH_VERSION="0.10" ;;
+    5) SELECTED_PATCH_VERSION="0.9" ;;
+    *)
+      echo "⚠️ 输入无效，已默认选择最新汉化版本。" >/dev/tty
+      SELECTED_PATCH_VERSION="$DEFAULT_PATCH_VERSION"
+      ;;
+  esac
 }
 
 prompt_existing_repo_patch_version_choice() {
@@ -460,6 +491,44 @@ verify_repo_tag_consistency() {
   fi
 }
 
+resolve_stable_clone_source() {
+  local tag="$1"
+
+  verify_repo_tag_consistency "$tag"
+
+  case "$REPO_SOURCE" in
+    github)
+      STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
+      REPO_SOURCE_EFFECTIVE="github"
+      ;;
+    gitcode)
+      if [ -z "$STABLE_GITCODE_COMMIT" ]; then
+        echo "❌ GitCode 镜像缺少 stable tag $tag，无法按要求使用 GitCode 国内镜像源。" >&2
+        exit 1
+      fi
+      STABLE_CLONE_URL="$GITCODE_REPO_URL"
+      REPO_SOURCE_EFFECTIVE="gitcode"
+      ;;
+    auto)
+      if [ -n "$STABLE_GITCODE_COMMIT" ]; then
+        STABLE_CLONE_URL="$GITCODE_REPO_URL"
+        REPO_SOURCE_EFFECTIVE="gitcode"
+      else
+        STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
+        REPO_SOURCE_EFFECTIVE="github"
+      fi
+      ;;
+    custom)
+      echo "❌ stable 通道暂不支持 custom 源，请改用 github / gitcode / auto。" >&2
+      exit 2
+      ;;
+    *)
+      echo "❌ 错误: 无法识别 stable 源选择: $REPO_SOURCE" >&2
+      exit 2
+      ;;
+  esac
+}
+
 infer_repo_source_from_url() {
   local url="${1:-}"
   case "$url" in
@@ -700,7 +769,7 @@ clone_with_stable_base() {
     exit 1
   fi
 
-  verify_repo_tag_consistency "$PATCH_BASE_REF"
+  resolve_stable_clone_source "$PATCH_BASE_REF"
   clone_url="$STABLE_CLONE_URL"
   echo "  stable tag: $PATCH_BASE_REF"
   echo "  stable commit: $PATCH_BASELINE_COMMIT"
@@ -761,7 +830,6 @@ prepare_repo_source_selection() {
   validate_channel
   if [ "$HERMES_ZH_CHANNEL" = "stable" ]; then
     echo "📋 汉化通道：stable。stable 通道绝不会使用 main，只使用官方日期 tag。"
-    return 0
   fi
   prompt_repo_source_if_needed
   validate_repo_source
@@ -906,7 +974,13 @@ echo "    Hermes Agent 中文一键安装"
 echo "========================================"
 echo "🔗 更多优化脚本访问：www.hermesgo.com"
 echo ""
-echo "🔍 检查系统环境..."
+echo "📋 第 1 步：选择汉化版本"
+prompt_patch_version_selection
+PATCH_VERSION="$SELECTED_PATCH_VERSION"
+download_patch_manifest "$PATCH_VERSION"
+echo "  已选择：Hermes Agent 中文汉化（针对 Releases v$PATCH_HERMES_VERSION）"
+echo ""
+echo "🔍 第 2 步：检查系统环境..."
 
 if ! command -v git >/dev/null 2>&1; then
   echo "❌ 错误: 需要安装 git" >&2
@@ -959,13 +1033,6 @@ else
   fi
   cd "$INSTALL_DIR"
 fi
-
-if VERSION=$(detect_hermes_version "pyproject.toml"); then
-  PATCH_VERSION=$(select_patch_version_for_repo "$VERSION")
-else
-  PATCH_VERSION="$DEFAULT_PATCH_VERSION"
-fi
-download_patch_manifest "$PATCH_VERSION"
 
 CURRENT_REPO_URL=${CURRENT_REPO_URL:-$(get_existing_origin_url)}
 if [ -z "${REPO_SOURCE_EFFECTIVE:-}" ] || [ "$REPO_SOURCE_EFFECTIVE" = "unknown" ]; then
