@@ -819,15 +819,32 @@ verify_repo_tag_consistency() {
 
 resolve_stable_clone_source() {
   local tag="$1"
+  local repo_status=""
 
-  verify_repo_tag_consistency "$tag"
+  if [ "$REPO_SOURCE" = "auto" ]; then
+    repo_status=$(check_git_repo_status "$OFFICIAL_REPO_URL")
+    case "$repo_status" in
+      ok)
+        REPO_SOURCE_EFFECTIVE="github"
+        ;;
+      slow|unavailable)
+        REPO_SOURCE_EFFECTIVE="gitcode"
+        ;;
+      *)
+        echo "❌ 错误: 无法识别 GitHub 连接状态: $repo_status" >&2
+        exit 2
+        ;;
+    esac
+  fi
 
   case "$REPO_SOURCE" in
     github)
+      verify_repo_tag_consistency "$tag"
       STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
       REPO_SOURCE_EFFECTIVE="github"
       ;;
     gitcode)
+      verify_repo_tag_consistency "$tag"
       if [ -z "$STABLE_GITCODE_COMMIT" ]; then
         echo "❌ GitCode 镜像缺少 stable tag $tag，无法按要求使用 GitCode 国内镜像源。" >&2
         exit 1
@@ -836,10 +853,16 @@ resolve_stable_clone_source() {
       REPO_SOURCE_EFFECTIVE="gitcode"
       ;;
     auto)
-      if [ -n "$STABLE_GITCODE_COMMIT" ]; then
+      if [ "$REPO_SOURCE_EFFECTIVE" = "gitcode" ]; then
+        REPO_SOURCE="gitcode"
+        verify_repo_tag_consistency "$tag"
+        REPO_SOURCE="auto"
         STABLE_CLONE_URL="$GITCODE_REPO_URL"
         REPO_SOURCE_EFFECTIVE="gitcode"
       else
+        REPO_SOURCE="github"
+        verify_repo_tag_consistency "$tag"
+        REPO_SOURCE="auto"
         STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
         REPO_SOURCE_EFFECTIVE="github"
       fi
