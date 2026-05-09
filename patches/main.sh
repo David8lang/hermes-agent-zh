@@ -12,11 +12,37 @@ REPO_SOURCE_EFFECTIVE="unknown"
 REPO_URL=""
 HERMES_ZH_CHANNEL="${HERMES_ZH_CHANNEL:-stable}"
 HERMES_REF="${HERMES_REF:-}"
+HERMES_ZH_MISMATCH_ACTION="${HERMES_ZH_MISMATCH_ACTION:-}"
+HERMES_ZH_IMPORT_EXISTING_CONFIG="${HERMES_ZH_IMPORT_EXISTING_CONFIG:-}"
 INSTALL_DIR="$HOME/.hermes/hermes-agent"
 PATCH_REPO="https://raw.githubusercontent.com/David8lang/hermes-agent-zh/main"
 DEFAULT_PATCH_VERSION="0.13"
 GITHUB_SLOW_THRESHOLD_SECONDS="${HERMES_ZH_GITHUB_SLOW_THRESHOLD_SECONDS:-6}"
 SELECTED_PATCH_VERSION=""
+USER_DATA_PATHS="
+config.yaml
+.env
+auth.json
+SOUL.md
+state.db
+state.db-shm
+state.db-wal
+memories
+skills
+hooks
+cron
+pairing
+.hermes_history
+.skills_prompt_snapshot.json
+models_dev_cache.json
+"
+RUNTIME_DATA_PATHS="
+logs
+sessions
+sandboxes
+audio_cache
+image_cache
+"
 
 TMP_DIR=$(mktemp -d)
 cleanup() { rm -rf "$TMP_DIR"; }
@@ -37,6 +63,11 @@ CURRENT_REPO_COMMIT=""
 STABLE_CLONE_URL=""
 STABLE_GITHUB_COMMIT=""
 STABLE_GITCODE_COMMIT=""
+LAST_GIT_TAG_ERROR=""
+LAST_GIT_TAG_ERROR_KIND=""
+EXISTING_USER_DATA_SNAPSHOT=""
+IMPORT_EXISTING_CONFIG_DECISION=""
+EXISTING_USER_DATA_RESTORED=0
 
 if [ "${HERMES_ZH_REPO_SOURCE+x}" = "x" ]; then
   REPO_SOURCE_FROM_ENV=1
@@ -276,6 +307,253 @@ prompt_via_tty() {
   return 0
 }
 
+default_mismatch_action() {
+  case "${HERMES_ZH_MISMATCH_ACTION:-}" in
+    "")
+      if is_tty_interactive; then
+        printf '%s\n' "ask"
+      else
+        printf '%s\n' "auto"
+      fi
+      ;;
+    ask|auto|manual)
+      printf '%s\n' "$HERMES_ZH_MISMATCH_ACTION"
+      ;;
+    *)
+      echo "❌ 错误: HERMES_ZH_MISMATCH_ACTION 仅支持 ask / auto / manual，当前值: $HERMES_ZH_MISMATCH_ACTION" >&2
+      exit 2
+      ;;
+  esac
+}
+
+default_import_existing_config_action() {
+  case "${HERMES_ZH_IMPORT_EXISTING_CONFIG:-}" in
+    "")
+      if is_tty_interactive; then
+        printf '%s\n' "ask"
+      else
+        printf '%s\n' "yes"
+      fi
+      ;;
+    ask|yes|no)
+      printf '%s\n' "$HERMES_ZH_IMPORT_EXISTING_CONFIG"
+      ;;
+    *)
+      echo "❌ 错误: HERMES_ZH_IMPORT_EXISTING_CONFIG 仅支持 ask / yes / no，当前值: $HERMES_ZH_IMPORT_EXISTING_CONFIG" >&2
+      exit 2
+      ;;
+  esac
+}
+
+prompt_repo_mismatch_action() {
+  local default_action=""
+  local raw_choice=""
+
+  default_action=$(default_mismatch_action)
+  if [ "$default_action" != "ask" ]; then
+    printf '%s\n' "$default_action"
+    return 0
+  fi
+
+  echo "检测到当前安装版本与汉化 stable 支持的官方发布版基线不一致。" >/dev/tty
+  echo "这通常表示你之前通过官方脚本安装了最新 main 分支。" >/dev/tty
+  echo "当前汉化 stable 只支持官方发布版基线，不直接跟随 main。" >/dev/tty
+  echo "当前安装 commit: ${CURRENT_REPO_COMMIT:-unknown}" >/dev/tty
+  echo "汉化目标版本: ${PATCH_HERMES_VERSION:-unknown}" >/dev/tty
+  if [ -n "$PATCH_BASE_REF" ]; then
+    echo "汉化基线 tag: $PATCH_BASE_REF" >/dev/tty
+  fi
+  if [ -n "$PATCH_BASELINE_COMMIT" ]; then
+    echo "汉化基线 commit: $PATCH_BASELINE_COMMIT" >/dev/tty
+  fi
+  echo "" >/dev/tty
+  echo "[1] 自动切换到汉化匹配的官方发布版后继续安装" >/dev/tty
+  echo "[2] 先停止，我自己手动处理版本" >/dev/tty
+  echo "" >/dev/tty
+  prompt_via_tty raw_choice "默认：1 > "
+
+  case "${raw_choice:-1}" in
+    ""|1)
+      printf '%s\n' "auto"
+      ;;
+    2)
+      printf '%s\n' "manual"
+      ;;
+    *)
+      echo "⚠️ 输入无效，已默认自动切换到汉化匹配的官方发布版。" >/dev/tty
+      printf '%s\n' "auto"
+      ;;
+  esac
+}
+
+prompt_import_existing_config() {
+  local default_action=""
+  local raw_choice=""
+
+  default_action=$(default_import_existing_config_action)
+  if [ "$default_action" != "ask" ]; then
+    printf '%s\n' "$default_action"
+    return 0
+  fi
+
+  echo "检测到旧版 Hermes 配置快照。" >/dev/tty
+  echo "是否导入已有配置到新的汉化安装？" >/dev/tty
+  echo "[1] 是，导入已有配置（默认）" >/dev/tty
+  echo "[2] 否，保留当前新安装生成的干净配置" >/dev/tty
+  echo "" >/dev/tty
+  prompt_via_tty raw_choice "默认：1 > "
+
+  case "${raw_choice:-1}" in
+    ""|1)
+      printf '%s\n' "yes"
+      ;;
+    2)
+      printf '%s\n' "no"
+      ;;
+    *)
+      echo "⚠️ 输入无效，已默认导入已有配置。" >/dev/tty
+      printf '%s\n' "yes"
+      ;;
+  esac
+}
+
+backup_existing_user_data() {
+  local hermes_home=""
+  local python_bin=""
+
+  hermes_home="$(dirname "$INSTALL_DIR")"
+  if find_python3_for_localizer; then
+    python_bin="$LOCALIZE_PYTHON"
+  elif [ -x "$INSTALL_DIR/venv/bin/python" ]; then
+    python_bin="$INSTALL_DIR/venv/bin/python"
+  else
+    echo "⚠️ 未找到可用的 Python 3，无法为错版安装创建配置快照，将继续沿用现有 ~/.hermes 配置。"
+    return 0
+  fi
+
+  USER_DATA_PATHS="$USER_DATA_PATHS" \
+    RUNTIME_DATA_PATHS="$RUNTIME_DATA_PATHS" \
+    "$python_bin" - "$hermes_home" <<'PY'
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+import time
+from pathlib import Path
+
+hermes_home = Path(sys.argv[1]).expanduser().resolve()
+if not hermes_home.exists():
+    raise SystemExit(0)
+
+user_data_paths = [item.strip() for item in os.environ.get("USER_DATA_PATHS", "").splitlines() if item.strip()]
+runtime_data_paths = [item.strip() for item in os.environ.get("RUNTIME_DATA_PATHS", "").splitlines() if item.strip()]
+
+snapshot = hermes_home / f".user-data-backup-{time.strftime('%Y%m%d-%H%M%S')}"
+if snapshot.exists():
+    snapshot = hermes_home / f".user-data-backup-{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
+snapshot.mkdir(parents=True, exist_ok=True)
+
+copied = False
+for rel in user_data_paths:
+    src = hermes_home / rel
+    if not src.exists():
+        continue
+    dst = snapshot / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if src.is_dir():
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        shutil.copy2(src, dst)
+    copied = True
+
+if not copied:
+    shutil.rmtree(snapshot, ignore_errors=True)
+    raise SystemExit(0)
+
+for rel in runtime_data_paths:
+    target = hermes_home / rel
+    if target.is_dir():
+        shutil.rmtree(target, ignore_errors=True)
+    elif target.exists():
+        target.unlink()
+
+for rel in user_data_paths:
+    target = hermes_home / rel
+    if target.is_dir():
+        shutil.rmtree(target, ignore_errors=True)
+    elif target.exists():
+        target.unlink()
+
+print(snapshot)
+PY
+}
+
+restore_existing_user_data() {
+  local snapshot_dir="$1"
+  local hermes_home=""
+  local python_bin=""
+
+  [ -n "$snapshot_dir" ] || return 0
+
+  hermes_home="$(dirname "$INSTALL_DIR")"
+  if find_python3_for_localizer; then
+    python_bin="$LOCALIZE_PYTHON"
+  elif [ -x "$INSTALL_DIR/venv/bin/python" ]; then
+    python_bin="$INSTALL_DIR/venv/bin/python"
+  else
+    echo "⚠️ 未找到可用的 Python 3，无法恢复旧配置快照。"
+    return 0
+  fi
+
+  USER_DATA_PATHS="$USER_DATA_PATHS" \
+    RUNTIME_DATA_PATHS="$RUNTIME_DATA_PATHS" \
+    "$python_bin" - "$snapshot_dir" "$hermes_home" <<'PY'
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+snapshot = Path(sys.argv[1]).expanduser().resolve()
+hermes_home = Path(sys.argv[2]).expanduser().resolve()
+
+if not snapshot.exists():
+    raise SystemExit(0)
+
+user_data_paths = [item.strip() for item in os.environ.get("USER_DATA_PATHS", "").splitlines() if item.strip()]
+runtime_data_paths = [item.strip() for item in os.environ.get("RUNTIME_DATA_PATHS", "").splitlines() if item.strip()]
+
+hermes_home.mkdir(parents=True, exist_ok=True)
+
+for rel in runtime_data_paths:
+    target = hermes_home / rel
+    if target.is_dir():
+        shutil.rmtree(target, ignore_errors=True)
+    elif target.exists():
+        target.unlink()
+
+for rel in user_data_paths:
+    target = hermes_home / rel
+    if target.is_dir():
+        shutil.rmtree(target, ignore_errors=True)
+    elif target.exists():
+        target.unlink()
+
+for rel in user_data_paths:
+    src = snapshot / rel
+    if not src.exists():
+        continue
+    dst = hermes_home / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if src.is_dir():
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        shutil.copy2(src, dst)
+PY
+}
+
 get_epoch_seconds() {
   date +%s
 }
@@ -442,21 +720,49 @@ resolve_tag_commit() {
   local url="${2:-$OFFICIAL_REPO_URL}"
   local peeled_ref="refs/tags/$tag^{}"
   local direct_ref="refs/tags/$tag"
+  local git_output=""
+  local git_error_file=""
+  local parsed_commit=""
+  local git_status=0
 
-  GIT_TERMINAL_PROMPT=0 git ls-remote --tags "$url" "$direct_ref" "$peeled_ref" |
-    awk -v peeled_ref="$peeled_ref" -v direct_ref="$direct_ref" '
-      $2 == peeled_ref { peeled = $1 }
-      $2 == direct_ref { direct = $1 }
-      END {
-        if (peeled != "") {
-          print peeled
-        } else if (direct != "") {
-          print direct
-        } else {
-          exit 1
+  LAST_GIT_TAG_ERROR=""
+  LAST_GIT_TAG_ERROR_KIND=""
+  git_error_file="$(mktemp)"
+
+  if ! git_output=$(
+    GIT_TERMINAL_PROMPT=0 git ls-remote --tags "$url" "$direct_ref" "$peeled_ref" 2>"$git_error_file"
+  ); then
+    git_status=$?
+    LAST_GIT_TAG_ERROR_KIND="network"
+    LAST_GIT_TAG_ERROR="$(cat "$git_error_file")"
+    rm -f "$git_error_file"
+    return "$git_status"
+  fi
+
+  rm -f "$git_error_file"
+  parsed_commit=$(
+    printf '%s\n' "$git_output" |
+      awk -v peeled_ref="$peeled_ref" -v direct_ref="$direct_ref" '
+        $2 == peeled_ref { peeled = $1 }
+        $2 == direct_ref { direct = $1 }
+        END {
+          if (peeled != "") {
+            print peeled
+          } else if (direct != "") {
+            print direct
+          } else {
+            exit 1
+          }
         }
-      }
-    '
+      '
+  ) || true
+
+  if [ -z "$parsed_commit" ]; then
+    LAST_GIT_TAG_ERROR_KIND="missing"
+    return 1
+  fi
+
+  printf '%s\n' "$parsed_commit"
 }
 
 verify_repo_tag_consistency() {
@@ -465,7 +771,14 @@ verify_repo_tag_consistency() {
   local gitcode_commit=""
 
   github_commit=$(resolve_tag_commit "$tag" "$OFFICIAL_REPO_URL") || {
-    echo "❌ GitHub 官方源不存在 stable tag: $tag" >&2
+    if [ "$LAST_GIT_TAG_ERROR_KIND" = "network" ]; then
+      echo "❌ 无法连接 GitHub 官方源或获取 stable tag 信息，请稍后重试。" >&2
+      if [ -n "$LAST_GIT_TAG_ERROR" ]; then
+        printf '%s\n' "$LAST_GIT_TAG_ERROR" >&2
+      fi
+    else
+      echo "❌ GitHub 官方源不存在 stable tag: $tag" >&2
+    fi
     exit 1
   }
 
@@ -828,9 +1141,6 @@ clone_with_selected_repo() {
 prepare_repo_source_selection() {
   validate_positive_integer "$GITHUB_SLOW_THRESHOLD_SECONDS" "HERMES_ZH_GITHUB_SLOW_THRESHOLD_SECONDS"
   validate_channel
-  if [ "$HERMES_ZH_CHANNEL" = "stable" ]; then
-    echo "📋 汉化通道：stable。stable 通道绝不会使用 main，只使用官方日期 tag。"
-  fi
   prompt_repo_source_if_needed
   validate_repo_source
   print_repo_source_strategy
@@ -880,6 +1190,103 @@ prepare_existing_repo() {
   REPO_SOURCE_EFFECTIVE="$inferred_source"
   print_repo_source_message "existing"
   echo "当前 origin: ${current_origin:-未设置}"
+}
+
+repo_has_local_changes() {
+  [ -n "$(git status --porcelain --untracked-files=all 2>/dev/null)" ]
+}
+
+ensure_existing_user_data_snapshot() {
+  if [ -n "$EXISTING_USER_DATA_SNAPSHOT" ]; then
+    return 0
+  fi
+
+  EXISTING_USER_DATA_SNAPSHOT="$(backup_existing_user_data || true)"
+  if [ -n "$EXISTING_USER_DATA_SNAPSHOT" ]; then
+    echo "  已保存旧配置快照: $EXISTING_USER_DATA_SNAPSHOT"
+    echo "  安装过程会先使用干净配置继续；安装完成后再询问是否导入旧配置。"
+  fi
+}
+
+print_manual_repo_mismatch_instructions() {
+  echo "⚠️ 当前安装大概率来自官方脚本的 main 分支，与当前汉化 stable 基线不匹配。"
+  echo "汉化 stable 只支持官方发布版基线，不直接跟随 main。"
+  echo "当前安装 commit: ${CURRENT_REPO_COMMIT:-unknown}"
+  echo "汉化目标版本: ${PATCH_HERMES_VERSION:-unknown}"
+  if [ -n "$PATCH_BASE_REF" ]; then
+    echo "汉化基线 tag: $PATCH_BASE_REF"
+  fi
+  if [ -n "$PATCH_BASELINE_COMMIT" ]; then
+    echo "汉化基线 commit: $PATCH_BASELINE_COMMIT"
+  fi
+  echo ""
+  echo "如需手动处理，请先切换到匹配的官方发布版，再重新运行汉化安装："
+  echo "  cd $INSTALL_DIR"
+  echo "  git fetch origin \"$PATCH_BASE_REF\""
+  echo "  git checkout \"$PATCH_BASELINE_COMMIT\""
+  echo "  curl -fsSL $PATCH_REPO/install-zh.sh | bash"
+  echo ""
+  echo "你现有的 ~/.hermes 配置不会被改动。"
+}
+
+handle_existing_repo_mismatch() {
+  local action=""
+
+  action=$(prompt_repo_mismatch_action)
+  case "$action" in
+    auto)
+      ensure_existing_user_data_snapshot
+      return 0
+      ;;
+    manual)
+      print_manual_repo_mismatch_instructions
+      exit 0
+      ;;
+    *)
+      echo "❌ 错误: 无法识别版本错配处理策略: $action" >&2
+      exit 2
+      ;;
+  esac
+}
+
+recreate_repo_from_selected_source() {
+  local repo_parent=""
+
+  repo_parent="$(dirname "$INSTALL_DIR")"
+  cd "$repo_parent"
+  echo "  正在备份当前目录并重新获取干净源码..."
+  mv "$INSTALL_DIR" "${INSTALL_DIR}.backup-$(date +%Y%m%d-%H%M%S)"
+
+  if [ "$PATCH_BASE_CHANNEL" = "stable" ]; then
+    if ! clone_with_stable_base; then
+      echo "❌ stable 源码克隆失败，无法继续安装" >&2
+      exit 1
+    fi
+  else
+    select_repo_url
+    if ! clone_with_selected_repo; then
+      echo "❌ 源码克隆失败，无法继续安装" >&2
+      exit 1
+    fi
+  fi
+
+  if [ ! -d "$INSTALL_DIR/.git" ]; then
+    echo "❌ 源码克隆失败，无法继续安装" >&2
+    exit 1
+  fi
+
+  cd "$INSTALL_DIR"
+  CURRENT_REPO_URL="$(get_existing_origin_url)"
+}
+
+existing_repo_needs_recreation_before_checkout() {
+  CURRENT_REPO_COMMIT=$(detect_git_commit)
+
+  if [ "$CURRENT_REPO_COMMIT" = "$PATCH_BASELINE_COMMIT" ]; then
+    return 1
+  fi
+
+  repo_has_local_changes
 }
 
 ensure_supported_commit_available() {
@@ -941,6 +1348,20 @@ checkout_manifest_supported_commit() {
   if [ "$CURRENT_REPO_COMMIT" = "$PATCH_BASELINE_COMMIT" ]; then
     echo "  当前源码已位于 $(patch_release_label "$PATCH_VERSION") 的汉化支持版本。"
     return 0
+  fi
+
+  if [ "$PATCH_BASE_CHANNEL" = "stable" ]; then
+    handle_existing_repo_mismatch
+  fi
+
+  if existing_repo_needs_recreation_before_checkout; then
+    echo "⚠️ 检测到现有 Hermes 仓库包含本地修改，无法安全切换到新的汉化基线版本。"
+    recreate_repo_from_selected_source
+    CURRENT_REPO_COMMIT=$(detect_git_commit)
+    if [ "$CURRENT_REPO_COMMIT" = "$PATCH_BASELINE_COMMIT" ]; then
+      echo "  已重新获取干净源码，并切换到 $(patch_release_label "$PATCH_VERSION") 的汉化支持版本。"
+      return 0
+    fi
   fi
 
   if ! ensure_supported_commit_available "$PATCH_BASELINE_COMMIT"; then
@@ -1114,6 +1535,18 @@ if [ -z "$LOCALIZE_PYTHON" ] && [ -x "$INSTALL_DIR/venv/bin/python" ]; then
   localize_setup_hermes "$INSTALL_DIR" "$INSTALL_DIR/venv/bin/python"
 fi
 
+if [ -n "$EXISTING_USER_DATA_SNAPSHOT" ]; then
+  echo ""
+  IMPORT_EXISTING_CONFIG_DECISION=$(prompt_import_existing_config)
+  if [ "$IMPORT_EXISTING_CONFIG_DECISION" = "yes" ]; then
+    restore_existing_user_data "$EXISTING_USER_DATA_SNAPSHOT"
+    EXISTING_USER_DATA_RESTORED=1
+    echo "  已导入旧配置快照，运行时日志和缓存不会恢复。"
+  else
+    echo "  已保留旧配置快照，当前不会导入到新的汉化安装。"
+  fi
+fi
+
 echo ""
 echo "🎉 恭喜！Hermes Agent 中文版本安装完成！"
 echo "🔗 更多优化脚本与更新说明：www.hermesgo.com"
@@ -1122,6 +1555,13 @@ echo ""
 echo "========================================"
 echo "安装目录: $INSTALL_DIR"
 echo "源码来源: $(effective_source_label "$REPO_SOURCE_EFFECTIVE")"
+if [ -n "$EXISTING_USER_DATA_SNAPSHOT" ]; then
+  if [ "$EXISTING_USER_DATA_RESTORED" -eq 1 ]; then
+    echo "配置导入: 已从快照恢复"
+  else
+    echo "配置导入: 未导入，旧配置快照保留在 $EXISTING_USER_DATA_SNAPSHOT"
+  fi
+fi
 echo "========================================"
 echo "常用命令:"
 echo "  cd $INSTALL_DIR"
