@@ -288,6 +288,54 @@ path.write_text(text, encoding="utf-8")
 PY
 }
 
+localize_main_startup_prompt() {
+  local target_root="$1"
+  local python_bin="$2"
+
+  "$python_bin" - "$target_root" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+path = root / "hermes_cli" / "main.py"
+if not path.exists():
+    raise SystemExit(0)
+
+text = path.read_text(encoding="utf-8")
+
+replacements = (
+    (
+        '    if not _has_any_provider_configured():\n'
+        '        print()\n'
+        '        print(\n'
+        '            "It looks like Hermes isn\'t configured yet -- no API keys or providers found."\n'
+        '        )\n',
+        '    if not _has_any_provider_configured():\n'
+        '        from hermes_cli.zh_patch import zh\n'
+        '        print()\n'
+        '        print(\n'
+        '            zh("It looks like Hermes isn\'t configured yet -- no API keys or providers found.")\n'
+        '        )\n',
+    ),
+    (
+        '            reply = input("Run setup now? [Y/n] ").strip().lower()',
+        '            reply = input(zh("Run setup now?") + " [Y/n] ").strip().lower()',
+    ),
+    (
+        '        print("You can run \'hermes setup\' at any time to configure.")',
+        '        print(zh("You can run \'hermes setup\' at any time to configure."))',
+    ),
+)
+
+updated = text
+for old, new in replacements:
+    updated = updated.replace(old, new)
+
+if updated != text:
+    path.write_text(updated, encoding="utf-8")
+PY
+}
+
 is_tty_interactive() {
   [ -r /dev/tty ] && [ -w /dev/tty ]
 }
@@ -699,6 +747,64 @@ check_git_repo_status() {
   fi
 }
 
+probe_git_repo_latency() {
+  local url="$1"
+  local start end elapsed
+
+  start=$(get_epoch_seconds)
+  if GIT_TERMINAL_PROMPT=0 git \
+    -c http.lowSpeedLimit=1024 \
+    -c http.lowSpeedTime=8 \
+    -c http.connectTimeout=8 \
+    ls-remote "$url" HEAD >/dev/null 2>&1; then
+    end=$(get_epoch_seconds)
+    elapsed=$((end - start))
+    printf 'ok:%s\n' "$elapsed"
+  else
+    printf 'unavailable:\n'
+  fi
+}
+
+select_fastest_repo_source() {
+  local github_probe=""
+  local gitcode_probe=""
+  local github_status=""
+  local gitcode_status=""
+  local github_elapsed=0
+  local gitcode_elapsed=0
+
+  github_probe=$(probe_git_repo_latency "$OFFICIAL_REPO_URL")
+  gitcode_probe=$(probe_git_repo_latency "$GITCODE_REPO_URL")
+
+  github_status=${github_probe%%:*}
+  gitcode_status=${gitcode_probe%%:*}
+  github_elapsed=${github_probe#*:}
+  gitcode_elapsed=${gitcode_probe#*:}
+  [ -n "$github_elapsed" ] || github_elapsed=0
+  [ -n "$gitcode_elapsed" ] || gitcode_elapsed=0
+
+  if [ "$github_status" = "ok" ] && [ "$gitcode_status" = "ok" ]; then
+    if [ "$gitcode_elapsed" -le "$github_elapsed" ]; then
+      printf '%s\n' "gitcode"
+    else
+      printf '%s\n' "github"
+    fi
+    return 0
+  fi
+
+  if [ "$gitcode_status" = "ok" ]; then
+    printf '%s\n' "gitcode"
+    return 0
+  fi
+
+  if [ "$github_status" = "ok" ]; then
+    printf '%s\n' "github"
+    return 0
+  fi
+
+  printf '%s\n' "unavailable"
+}
+
 resolve_latest_stable_tag() {
   local url="${1:-$OFFICIAL_REPO_URL}"
 
@@ -822,16 +928,20 @@ resolve_stable_clone_source() {
   local repo_status=""
 
   if [ "$REPO_SOURCE" = "auto" ]; then
-    repo_status=$(check_git_repo_status "$OFFICIAL_REPO_URL")
+    repo_status=$(select_fastest_repo_source)
     case "$repo_status" in
-      ok)
+      github)
         REPO_SOURCE_EFFECTIVE="github"
         ;;
-      slow|unavailable)
+      gitcode)
         REPO_SOURCE_EFFECTIVE="gitcode"
         ;;
+      unavailable)
+        echo "❌ 错误: GitHub 与 GitCode 当前都不可用，请稍后重试。" >&2
+        exit 2
+        ;;
       *)
-        echo "❌ 错误: 无法识别 GitHub 连接状态: $repo_status" >&2
+        echo "❌ 错误: 无法识别自动测速结果: $repo_status" >&2
         exit 2
         ;;
     esac
@@ -923,7 +1033,7 @@ print_repo_source_strategy() {
   case "$REPO_SOURCE" in
     auto)
       echo "📋 源码下载策略：自动模式。"
-      echo "   新安装会优先尝试 GitHub 官方源；如果不可用或连接较慢，则自动切换到 GitCode 国内镜像源。"
+      echo "   新安装会同时测速 GitHub 和 GitCode，并自动选择响应更快的源。"
       echo "   已存在仓库时，默认沿用当前 origin。"
       ;;
     github)
@@ -968,16 +1078,16 @@ prompt_repo_source_if_needed() {
   echo "    https://gitcode.com/hermes-go/hermes-agent" >/dev/tty
   echo "" >/dev/tty
   echo "[3] 自动测速并选择" >/dev/tty
-  echo "    默认选项，先测速再决定使用 GitHub 或 GitCode。" >/dev/tty
+  echo "    先测速再决定使用 GitHub 或 GitCode。" >/dev/tty
   echo "" >/dev/tty
-  prompt_via_tty selection "默认：3 > "
-  case "${selection:-3}" in
-    ""|3) REPO_SOURCE="auto" ;;
+  prompt_via_tty selection "默认：2 > "
+  case "${selection:-2}" in
     1) REPO_SOURCE="github" ;;
-    2) REPO_SOURCE="gitcode" ;;
+    ""|2) REPO_SOURCE="gitcode" ;;
+    3) REPO_SOURCE="auto" ;;
     *)
-      echo "⚠️ 输入无效，已使用默认自动测速模式。" >/dev/tty
-      REPO_SOURCE="auto"
+      echo "⚠️ 输入无效，已使用默认 GitCode 国内镜像源。" >/dev/tty
+      REPO_SOURCE="gitcode"
       ;;
   esac
 }
@@ -1014,30 +1124,26 @@ select_repo_url() {
       print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
       ;;
     auto)
-      repo_status=$(check_git_repo_status "$OFFICIAL_REPO_URL")
+      repo_status=$(select_fastest_repo_source)
       case "$repo_status" in
-        ok)
+        github)
           REPO_URL="$OFFICIAL_REPO_URL"
           REPO_SOURCE_EFFECTIVE="github"
-          echo "✅ GitHub 官方源连接正常，使用官方源。"
+          echo "✅ 自动测速完成，当前使用 GitHub 官方源。"
           print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
           ;;
-        slow)
-          echo "⚠️ 检测到 GitHub 连接较慢，正在切换到 GitCode 国内镜像源..."
-          echo "⚠️ 注意：GitCode 镜像可能不是最新版本。"
+        gitcode)
           REPO_URL="$GITCODE_REPO_URL"
           REPO_SOURCE_EFFECTIVE="gitcode"
+          echo "✅ 自动测速完成，当前使用 GitCode 国内镜像源。"
           print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
           ;;
         unavailable)
-          echo "⚠️ GitHub 官方源暂时不可用，正在切换到 GitCode 国内镜像源..."
-          echo "⚠️ 注意：GitCode 镜像可能不是最新版本。"
-          REPO_URL="$GITCODE_REPO_URL"
-          REPO_SOURCE_EFFECTIVE="gitcode"
-          print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
+          echo "❌ 错误: GitHub 与 GitCode 当前都不可用，请稍后重试。" >&2
+          exit 2
           ;;
         *)
-          echo "❌ 错误: 无法识别 GitHub 连接状态: $repo_status" >&2
+          echo "❌ 错误: 无法识别自动测速结果: $repo_status" >&2
           exit 2
           ;;
       esac
@@ -1532,9 +1638,9 @@ done
 
 echo ""
 echo "🔧 应用汉化补丁..."
-if git apply --check "$TMP_DIR/hermes-setup-zh.patch" >/dev/null 2>&1; then
-  git apply "$TMP_DIR/hermes-setup-zh.patch"
-elif git apply --reverse --check "$TMP_DIR/hermes-setup-zh.patch" >/dev/null 2>&1; then
+if git apply --check --exclude=hermes_cli/main.py "$TMP_DIR/hermes-setup-zh.patch" >/dev/null 2>&1; then
+  git apply --exclude=hermes_cli/main.py "$TMP_DIR/hermes-setup-zh.patch"
+elif git apply --reverse --check --exclude=hermes_cli/main.py "$TMP_DIR/hermes-setup-zh.patch" >/dev/null 2>&1; then
   echo "ℹ️ Patch already applied, skipping."
 else
   print_patch_guidance_for_source "patch" "${VERSION:-未知}"
@@ -1544,6 +1650,13 @@ fi
 
 echo "📦 安装汉化模块..."
 cp "$TMP_DIR/zh_patch.py" "$INSTALL_DIR/hermes_cli/zh_patch.py"
+
+echo "🌐 汉化 hermes_cli/main.py 首次启动提示..."
+if find_python3_for_localizer; then
+  localize_main_startup_prompt "$INSTALL_DIR" "$LOCALIZE_PYTHON"
+else
+  echo "⚠️ 未找到可用的 Python 3，本轮先跳过 hermes_cli/main.py 启动提示汉化"
+fi
 
 echo "🌐 汉化 setup-hermes.sh..."
 if find_python3_for_localizer; then
@@ -1566,6 +1679,9 @@ else
 fi
 
 if [ -z "$LOCALIZE_PYTHON" ] && [ -x "$INSTALL_DIR/venv/bin/python" ]; then
+  echo ""
+  echo "🌐 使用安装后的 Python 补做 hermes_cli/main.py 启动提示汉化..."
+  localize_main_startup_prompt "$INSTALL_DIR" "$INSTALL_DIR/venv/bin/python"
   echo ""
   echo "🌐 使用安装后的 Python 补做 setup-hermes.sh 汉化..."
   localize_setup_hermes "$INSTALL_DIR" "$INSTALL_DIR/venv/bin/python"

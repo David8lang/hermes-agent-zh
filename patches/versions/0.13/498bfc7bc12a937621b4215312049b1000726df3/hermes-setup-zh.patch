@@ -1460,7 +1460,7 @@ index 062cf5b..1fa95f1 100644
          )
          print()
          print("  Run:  hermes setup")
-@@ -1375,11 +1375,11 @@ def main():
+@@ -1375,14 +1375,14 @@ def main():
              sys.exit(1)
  
          try:
@@ -1476,8 +1476,9 @@ index 062cf5b..1fa95f1 100644
 +        print(zh("You can run 'hermes setup' at any time to configure."))
          sys.exit(1)
  
- @@ -1786,11 +1786,12 @@ def select_provider_and_model(args=None):
-      from hermes_cli.models import CANONICAL_PROVIDERS, _PROVIDER_LABELS
+     # Start update check in background (runs while other init happens)
+@@ -1786,11 +1786,12 @@ def select_provider_and_model(args=None):
+     from hermes_cli.models import CANONICAL_PROVIDERS, _PROVIDER_LABELS
  
      provider_labels = dict(_PROVIDER_LABELS)  # derive from canonical list
 -    active_label = provider_labels.get(active, active) if active else "none"
