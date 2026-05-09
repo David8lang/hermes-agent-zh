@@ -771,13 +771,14 @@ verify_repo_tag_consistency() {
   local tag="$1"
   local github_commit=""
   local gitcode_commit=""
+  local source_commit=""
 
   if [ "$PATCH_BASE_CHANNEL" = "stable" ] && [ "$STABLE_TAG_NOTICE_EMITTED" -eq 1 ]; then
     return 0
   fi
 
   if [ "$REPO_SOURCE" = "gitcode" ]; then
-    gitcode_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL") || {
+    source_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL") || {
       if [ "$LAST_GIT_TAG_ERROR_KIND" = "network" ]; then
         echo "❌ 无法连接 GitCode 国内镜像源或获取 stable tag 信息，请稍后重试。" >&2
         if [ -n "$LAST_GIT_TAG_ERROR" ]; then
@@ -788,23 +789,9 @@ verify_repo_tag_consistency() {
       fi
       exit 1
     }
-
-    github_commit=$(resolve_tag_commit "$tag" "$OFFICIAL_REPO_URL" 2>/dev/null || true)
-    if [ -n "$github_commit" ] && [ "$gitcode_commit" != "$github_commit" ]; then
-      echo "❌ GitCode 与 GitHub 的同名 tag 指向不同 commit，已终止安装。" >&2
-      echo "  tag: $tag" >&2
-      echo "  GitHub:  $github_commit" >&2
-      echo "  GitCode: $gitcode_commit" >&2
-      echo "请等待 GitCode 镜像同步后重试，或临时强制使用 GitHub 官方源。" >&2
-      exit 1
-    fi
-    if [ -z "$github_commit" ]; then
-      echo "⚠️ 当前无法从 GitHub 官方源校验 stable tag 一致性，将继续使用 GitCode 国内镜像源。"
-      echo "  stable tag: $tag"
-      echo "  stable commit: $gitcode_commit"
-    fi
+    gitcode_commit="$source_commit"
   else
-    github_commit=$(resolve_tag_commit "$tag" "$OFFICIAL_REPO_URL") || {
+    source_commit=$(resolve_tag_commit "$tag" "$OFFICIAL_REPO_URL") || {
       if [ "$LAST_GIT_TAG_ERROR_KIND" = "network" ]; then
         echo "❌ 无法连接 GitHub 官方源或获取 stable tag 信息，请稍后重试。" >&2
         if [ -n "$LAST_GIT_TAG_ERROR" ]; then
@@ -815,17 +802,7 @@ verify_repo_tag_consistency() {
       fi
       exit 1
     }
-
-    if [ "$REPO_SOURCE" = "auto" ]; then
-      gitcode_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL" 2>/dev/null || true)
-      if [ -n "$gitcode_commit" ] && [ "$gitcode_commit" != "$github_commit" ]; then
-        echo "⚠️ GitCode 镜像的 stable tag 与 GitHub 官方源不一致，当前将继续使用 GitHub 官方源。"
-        echo "  tag: $tag"
-        echo "  GitHub:  $github_commit"
-        echo "  GitCode: $gitcode_commit"
-        gitcode_commit=""
-      fi
-    fi
+    github_commit="$source_commit"
   fi
 
   STABLE_GITHUB_COMMIT="$github_commit"
@@ -837,9 +814,6 @@ verify_repo_tag_consistency() {
   else
     STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
     REPO_SOURCE_EFFECTIVE="github"
-    if [ "$REPO_SOURCE" = "auto" ]; then
-      echo "⚠️ GitCode 镜像缺少 stable tag $tag，回退到 GitHub 官方源。"
-    fi
   fi
 }
 
