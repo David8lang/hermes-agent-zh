@@ -729,10 +729,11 @@ resolve_tag_commit() {
   LAST_GIT_TAG_ERROR_KIND=""
   git_error_file="$(mktemp)"
 
-  if ! git_output=$(
+  git_output=$(
     GIT_TERMINAL_PROMPT=0 git ls-remote --tags "$url" "$direct_ref" "$peeled_ref" 2>"$git_error_file"
-  ); then
-    git_status=$?
+  )
+  git_status=$?
+  if [ "$git_status" -ne 0 ]; then
     LAST_GIT_TAG_ERROR_KIND="network"
     LAST_GIT_TAG_ERROR="$(cat "$git_error_file")"
     rm -f "$git_error_file"
@@ -782,14 +783,23 @@ verify_repo_tag_consistency() {
     exit 1
   }
 
-  gitcode_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL" 2>/dev/null || true)
-  if [ -n "$gitcode_commit" ] && [ "$gitcode_commit" != "$github_commit" ]; then
-    echo "❌ GitCode 与 GitHub 的同名 tag 指向不同 commit，已终止安装。" >&2
-    echo "  tag: $tag" >&2
-    echo "  GitHub:  $github_commit" >&2
-    echo "  GitCode: $gitcode_commit" >&2
-    echo "请等待 GitCode 镜像同步后重试，或临时强制使用 GitHub 官方源。" >&2
-    exit 1
+  if [ "$REPO_SOURCE" = "gitcode" ] || [ "$REPO_SOURCE" = "auto" ]; then
+    gitcode_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL" 2>/dev/null || true)
+    if [ -n "$gitcode_commit" ] && [ "$gitcode_commit" != "$github_commit" ]; then
+      if [ "$REPO_SOURCE" = "gitcode" ]; then
+        echo "❌ GitCode 与 GitHub 的同名 tag 指向不同 commit，已终止安装。" >&2
+        echo "  tag: $tag" >&2
+        echo "  GitHub:  $github_commit" >&2
+        echo "  GitCode: $gitcode_commit" >&2
+        echo "请等待 GitCode 镜像同步后重试，或临时强制使用 GitHub 官方源。" >&2
+        exit 1
+      fi
+      echo "⚠️ GitCode 镜像的 stable tag 与 GitHub 官方源不一致，当前将继续使用 GitHub 官方源。"
+      echo "  tag: $tag"
+      echo "  GitHub:  $github_commit"
+      echo "  GitCode: $gitcode_commit"
+      gitcode_commit=""
+    fi
   fi
 
   STABLE_GITHUB_COMMIT="$github_commit"
