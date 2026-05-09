@@ -7,7 +7,7 @@ set -euo pipefail
 
 OFFICIAL_REPO_URL="https://github.com/nousresearch/hermes-agent.git"
 GITCODE_REPO_URL="https://gitcode.com/hermes-go/hermes-agent.git"
-REPO_SOURCE="${HERMES_ZH_REPO_SOURCE:-auto}"
+REPO_SOURCE="${HERMES_ZH_REPO_SOURCE:-gitcode}"
 REPO_SOURCE_EFFECTIVE="unknown"
 REPO_URL=""
 HERMES_ZH_CHANNEL="${HERMES_ZH_CHANNEL:-stable}"
@@ -724,87 +724,6 @@ check_git_repo_available() {
     ls-remote "$url" HEAD >/dev/null 2>&1
 }
 
-check_git_repo_status() {
-  local url="$1"
-  local start end elapsed
-
-  start=$(get_epoch_seconds)
-  if GIT_TERMINAL_PROMPT=0 git \
-    -c http.lowSpeedLimit=1024 \
-    -c http.lowSpeedTime=8 \
-    -c http.connectTimeout=8 \
-    ls-remote "$url" HEAD >/dev/null 2>&1; then
-    end=$(get_epoch_seconds)
-    elapsed=$((end - start))
-
-    if [ "$elapsed" -gt "$GITHUB_SLOW_THRESHOLD_SECONDS" ]; then
-      printf '%s\n' "slow"
-    else
-      printf '%s\n' "ok"
-    fi
-  else
-    printf '%s\n' "unavailable"
-  fi
-}
-
-probe_git_repo_latency() {
-  local url="$1"
-  local start end elapsed
-
-  start=$(get_epoch_seconds)
-  if GIT_TERMINAL_PROMPT=0 git \
-    -c http.lowSpeedLimit=1024 \
-    -c http.lowSpeedTime=8 \
-    -c http.connectTimeout=8 \
-    ls-remote "$url" HEAD >/dev/null 2>&1; then
-    end=$(get_epoch_seconds)
-    elapsed=$((end - start))
-    printf 'ok:%s\n' "$elapsed"
-  else
-    printf 'unavailable:\n'
-  fi
-}
-
-select_fastest_repo_source() {
-  local github_probe=""
-  local gitcode_probe=""
-  local github_status=""
-  local gitcode_status=""
-  local github_elapsed=0
-  local gitcode_elapsed=0
-
-  github_probe=$(probe_git_repo_latency "$OFFICIAL_REPO_URL")
-  gitcode_probe=$(probe_git_repo_latency "$GITCODE_REPO_URL")
-
-  github_status=${github_probe%%:*}
-  gitcode_status=${gitcode_probe%%:*}
-  github_elapsed=${github_probe#*:}
-  gitcode_elapsed=${gitcode_probe#*:}
-  [ -n "$github_elapsed" ] || github_elapsed=0
-  [ -n "$gitcode_elapsed" ] || gitcode_elapsed=0
-
-  if [ "$github_status" = "ok" ] && [ "$gitcode_status" = "ok" ]; then
-    if [ "$gitcode_elapsed" -le "$github_elapsed" ]; then
-      printf '%s\n' "gitcode"
-    else
-      printf '%s\n' "github"
-    fi
-    return 0
-  fi
-
-  if [ "$gitcode_status" = "ok" ]; then
-    printf '%s\n' "gitcode"
-    return 0
-  fi
-
-  if [ "$github_status" = "ok" ]; then
-    printf '%s\n' "github"
-    return 0
-  fi
-
-  printf '%s\n' "unavailable"
-}
-
 resolve_latest_stable_tag() {
   local url="${1:-$OFFICIAL_REPO_URL}"
 
@@ -927,26 +846,6 @@ resolve_stable_clone_source() {
   local tag="$1"
   local repo_status=""
 
-  if [ "$REPO_SOURCE" = "auto" ]; then
-    repo_status=$(select_fastest_repo_source)
-    case "$repo_status" in
-      github)
-        REPO_SOURCE_EFFECTIVE="github"
-        ;;
-      gitcode)
-        REPO_SOURCE_EFFECTIVE="gitcode"
-        ;;
-      unavailable)
-        echo "❌ 错误: GitHub 与 GitCode 当前都不可用，请稍后重试。" >&2
-        exit 2
-        ;;
-      *)
-        echo "❌ 错误: 无法识别自动测速结果: $repo_status" >&2
-        exit 2
-        ;;
-    esac
-  fi
-
   case "$REPO_SOURCE" in
     github)
       verify_repo_tag_consistency "$tag"
@@ -962,23 +861,8 @@ resolve_stable_clone_source() {
       STABLE_CLONE_URL="$GITCODE_REPO_URL"
       REPO_SOURCE_EFFECTIVE="gitcode"
       ;;
-    auto)
-      if [ "$REPO_SOURCE_EFFECTIVE" = "gitcode" ]; then
-        REPO_SOURCE="gitcode"
-        verify_repo_tag_consistency "$tag"
-        REPO_SOURCE="auto"
-        STABLE_CLONE_URL="$GITCODE_REPO_URL"
-        REPO_SOURCE_EFFECTIVE="gitcode"
-      else
-        REPO_SOURCE="github"
-        verify_repo_tag_consistency "$tag"
-        REPO_SOURCE="auto"
-        STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
-        REPO_SOURCE_EFFECTIVE="github"
-      fi
-      ;;
     custom)
-      echo "❌ stable 通道暂不支持 custom 源，请改用 github / gitcode / auto。" >&2
+      echo "❌ stable 通道暂不支持 custom 源，请改用 github / gitcode。" >&2
       exit 2
       ;;
     *)
@@ -1031,11 +915,6 @@ print_repo_source_message() {
 
 print_repo_source_strategy() {
   case "$REPO_SOURCE" in
-    auto)
-      echo "📋 源码下载策略：自动模式。"
-      echo "   新安装会同时测速 GitHub 和 GitCode，并自动选择响应更快的源。"
-      echo "   已存在仓库时，默认沿用当前 origin。"
-      ;;
     github)
       echo "📋 源码下载策略：强制使用 GitHub 官方源。"
       ;;
@@ -1051,9 +930,9 @@ print_repo_source_strategy() {
 
 validate_repo_source() {
   case "$REPO_SOURCE" in
-    auto|github|gitcode|custom) ;;
+    github|gitcode|custom) ;;
     *)
-      echo "❌ 错误: HERMES_ZH_REPO_SOURCE 仅支持 auto / github / gitcode / custom，当前值: $REPO_SOURCE" >&2
+      echo "❌ 错误: HERMES_ZH_REPO_SOURCE 仅支持 github / gitcode / custom，当前值: $REPO_SOURCE" >&2
       exit 2
       ;;
   esac
@@ -1065,7 +944,7 @@ prompt_repo_source_if_needed() {
     return 0
   fi
   if ! is_tty_interactive; then
-    REPO_SOURCE="auto"
+    REPO_SOURCE="gitcode"
     return 0
   fi
 
@@ -1077,14 +956,10 @@ prompt_repo_source_if_needed() {
   echo "[2] 国内镜像加速站" >/dev/tty
   echo "    https://gitcode.com/hermes-go/hermes-agent" >/dev/tty
   echo "" >/dev/tty
-  echo "[3] 自动测速并选择" >/dev/tty
-  echo "    先测速再决定使用 GitHub 或 GitCode。" >/dev/tty
-  echo "" >/dev/tty
   prompt_via_tty selection "默认：2 > "
   case "${selection:-2}" in
     1) REPO_SOURCE="github" ;;
     ""|2) REPO_SOURCE="gitcode" ;;
-    3) REPO_SOURCE="auto" ;;
     *)
       echo "⚠️ 输入无效，已使用默认 GitCode 国内镜像源。" >/dev/tty
       REPO_SOURCE="gitcode"
@@ -1122,31 +997,6 @@ select_repo_url() {
       REPO_URL="$HERMES_ZH_REPO_URL"
       REPO_SOURCE_EFFECTIVE="custom"
       print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
-      ;;
-    auto)
-      repo_status=$(select_fastest_repo_source)
-      case "$repo_status" in
-        github)
-          REPO_URL="$OFFICIAL_REPO_URL"
-          REPO_SOURCE_EFFECTIVE="github"
-          echo "✅ 自动测速完成，当前使用 GitHub 官方源。"
-          print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
-          ;;
-        gitcode)
-          REPO_URL="$GITCODE_REPO_URL"
-          REPO_SOURCE_EFFECTIVE="gitcode"
-          echo "✅ 自动测速完成，当前使用 GitCode 国内镜像源。"
-          print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
-          ;;
-        unavailable)
-          echo "❌ 错误: GitHub 与 GitCode 当前都不可用，请稍后重试。" >&2
-          exit 2
-          ;;
-        *)
-          echo "❌ 错误: 无法识别自动测速结果: $repo_status" >&2
-          exit 2
-          ;;
-      esac
       ;;
   esac
 }
@@ -1281,7 +1131,6 @@ clone_with_selected_repo() {
 }
 
 prepare_repo_source_selection() {
-  validate_positive_integer "$GITHUB_SLOW_THRESHOLD_SECONDS" "HERMES_ZH_GITHUB_SLOW_THRESHOLD_SECONDS"
   validate_channel
   prompt_repo_source_if_needed
   validate_repo_source
@@ -1296,7 +1145,7 @@ prepare_existing_repo() {
   current_origin=$(get_existing_origin_url)
   CURRENT_REPO_URL="$current_origin"
 
-  if [ "$REPO_SOURCE_FROM_ENV" -eq 1 ] && [ "$REPO_SOURCE" != "auto" ]; then
+  if [ "$REPO_SOURCE_FROM_ENV" -eq 1 ]; then
     target_url=$(get_repo_url_for_source "$REPO_SOURCE")
     if [ -z "$target_url" ]; then
       echo "❌ 错误: 无法确定强制源对应的仓库地址" >&2
@@ -1307,25 +1156,6 @@ prepare_existing_repo() {
     REPO_SOURCE_EFFECTIVE="$REPO_SOURCE"
     print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
     return 0
-  fi
-
-  if [ "$REPO_SOURCE" = "auto" ]; then
-    inferred_source=$(infer_repo_source_from_url "$current_origin")
-    REPO_SOURCE_EFFECTIVE="$inferred_source"
-    print_repo_source_message "existing"
-    echo "当前 origin: ${current_origin:-未设置}"
-    return 0
-  fi
-
-  if [ "$REPO_SOURCE_FROM_ENV" -eq 1 ]; then
-    target_url=$(get_repo_url_for_source "$REPO_SOURCE")
-    if [ -n "$target_url" ]; then
-      git remote set-url origin "$target_url"
-      CURRENT_REPO_URL="$target_url"
-      REPO_SOURCE_EFFECTIVE="$REPO_SOURCE"
-      print_repo_source_message "$REPO_SOURCE_EFFECTIVE"
-      return 0
-    fi
   fi
 
   inferred_source=$(infer_repo_source_from_url "$current_origin")

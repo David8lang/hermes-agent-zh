@@ -332,9 +332,9 @@ _TEXT = {
     "Test SSH connection?": "测试 SSH 连接吗？",
     "Update API key?": "更新 API 密钥吗？",
     "Update Modal credentials?": "更新 Modal 凭据吗？",
-    "It looks like Hermes isn't configured yet -- no API keys or providers found.": "鐪嬭捣鏉?Hermes 杩樻病鏈夊畬鎴愰厤缃€斺€旀湭鎵惧埌 API 瀵嗛挜鎴栨彁渚涘晢銆?,
-    "Run setup now?": "鐜板湪杩愯閰嶇疆鍚戝鍚楋紵",
-    "You can run 'hermes setup' at any time to configure.": "浣犲彲浠ラ殢鏃惰繍琛? 'hermes setup' 杩涜閰嶇疆銆?,
+    "It looks like Hermes isn't configured yet -- no API keys or providers found.": "看起来 Hermes 还没有完成配置，未找到 API 密钥或提供商。",
+    "Run setup now?": "现在运行配置向导吗？",
+    "You can run 'hermes setup' at any time to configure.": "你可以随时运行 'hermes setup' 进行配置。",
 }
 
 _FRAGMENTS = (
