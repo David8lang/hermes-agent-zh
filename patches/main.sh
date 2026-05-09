@@ -68,6 +68,7 @@ LAST_GIT_TAG_ERROR_KIND=""
 EXISTING_USER_DATA_SNAPSHOT=""
 IMPORT_EXISTING_CONFIG_DECISION=""
 EXISTING_USER_DATA_RESTORED=0
+STABLE_TAG_NOTICE_EMITTED=0
 
 if [ "${HERMES_ZH_REPO_SOURCE+x}" = "x" ]; then
   REPO_SOURCE_FROM_ENV=1
@@ -771,6 +772,10 @@ verify_repo_tag_consistency() {
   local github_commit=""
   local gitcode_commit=""
 
+  if [ "$PATCH_BASE_CHANNEL" = "stable" ] && [ "$STABLE_TAG_NOTICE_EMITTED" -eq 1 ]; then
+    return 0
+  fi
+
   if [ "$REPO_SOURCE" = "gitcode" ]; then
     gitcode_commit=$(resolve_tag_commit "$tag" "$GITCODE_REPO_URL") || {
       if [ "$LAST_GIT_TAG_ERROR_KIND" = "network" ]; then
@@ -825,13 +830,16 @@ verify_repo_tag_consistency() {
 
   STABLE_GITHUB_COMMIT="$github_commit"
   STABLE_GITCODE_COMMIT="$gitcode_commit"
+  STABLE_TAG_NOTICE_EMITTED=1
   if [ -n "$gitcode_commit" ]; then
     STABLE_CLONE_URL="$GITCODE_REPO_URL"
     REPO_SOURCE_EFFECTIVE="gitcode"
   else
     STABLE_CLONE_URL="$OFFICIAL_REPO_URL"
     REPO_SOURCE_EFFECTIVE="github"
-    echo "⚠️ GitCode 镜像缺少 stable tag $tag，回退到 GitHub 官方源。"
+    if [ "$REPO_SOURCE" = "auto" ]; then
+      echo "⚠️ GitCode 镜像缺少 stable tag $tag，回退到 GitHub 官方源。"
+    fi
   fi
 }
 
