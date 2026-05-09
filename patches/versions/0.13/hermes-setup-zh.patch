@@ -1451,6 +1451,32 @@ diff --git a/hermes_cli/main.py b/hermes_cli/main.py
 index 062cf5b..1fa95f1 100644
 --- a/hermes_cli/main.py
 +++ b/hermes_cli/main.py
+@@ -1357,7 +1357,7 @@ def main():
+     if not _has_any_provider_configured():
+         print()
+         print(
+-            "It looks like Hermes isn't configured yet -- no API keys or providers found."
++            zh("It looks like Hermes isn't configured yet -- no API keys or providers found.")
+         )
+         print()
+         print("  Run:  hermes setup")
+@@ -1375,11 +1375,11 @@ def main():
+             sys.exit(1)
+ 
+         try:
+-            reply = input("Run setup now? [Y/n] ").strip().lower()
++            reply = input(zh("Run setup now?") + " [Y/n] ").strip().lower()
+         except (EOFError, KeyboardInterrupt):
+             reply = "n"
+         if reply in ("", "y", "yes"):
+             cmd_setup(args)
+             return
+         print()
+-        print("You can run 'hermes setup' at any time to configure.")
++        print(zh("You can run 'hermes setup' at any time to configure."))
+         sys.exit(1)
+ 
+     # Start update check in background (runs while other init happens)
 @@ -1786,11 +1786,12 @@ def select_provider_and_model(args=None):
      from hermes_cli.models import CANONICAL_PROVIDERS, _PROVIDER_LABELS
  
