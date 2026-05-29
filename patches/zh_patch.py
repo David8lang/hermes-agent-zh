@@ -51,6 +51,23 @@ _TEXT = {
     "Could not fetch models from endpoint. Enter model name manually.": "无法从端点获取模型列表，请手动输入模型名称。",
     "No URL provided. Cancelled.": "未提供 URL，已取消。",
     "Endpoint saved. Use `/model` in chat or `hermes model` to set a model.": "端点已保存。可在聊天中使用 `/model`，或运行 `hermes model` 设置模型。",
+    "API key": "API 密钥",
+    "optional": "可选",
+    "Current URL:": "当前 URL：",
+    "Current key:": "当前密钥：",
+    "Invalid URL:": "无效 URL：",
+    "must start with http:// or https://": "必须以 http:// 或 https:// 开头",
+    "Hint: Did you mean to add /v1 at the end?": "提示：你可能需要在末尾补上 /v1。",
+    "Most local model servers (Ollama, vLLM, llama.cpp) require it.": "大多数本地模型服务器（Ollama、vLLM、llama.cpp）都要求这样写。",
+    "e.g.": "例如",
+    "Add /v1?": "添加 /v1 吗？",
+    "Updated URL:": "已更新 URL：",
+    "Model name": "模型名称",
+    "Select model": "选择模型",
+    "or type name": "或直接输入名称",
+    "Display name": "显示名称",
+    "Detected model:": "检测到模型：",
+    "Use this model?": "使用这个模型吗？",
     "Continue with OAuth login? [y/N]: ": "继续进行 OAuth 登录吗？ [y/N]: ",
     "Select provider to remove:": "选择要删除的提供商：",
     "Cancel": "取消",
@@ -394,6 +411,21 @@ _CONTEXT_LENGTH_RE = re.compile(
 _FOUND_MODELS_COUNT_RE = re.compile(r"^Found (\d+) model\(s\):$")
 _NO_MODEL_SPECIFIED_RE = re.compile(r"^No model specified\. Cancelled\.$")
 _MODEL_SET_RE = re.compile(r"^Model set to: (.+)$")
+_VERIFIED_ENDPOINT_RE = re.compile(
+    r"^Verified endpoint via (.+) \((\d+) model\(s\) visible\)$"
+)
+_WARNING_ENDPOINT_FALLBACK_RE = re.compile(
+    r"^Warning: endpoint verification worked at (.+)/models, not the exact URL you entered\. Saving the working base URL instead\.$"
+)
+_WARNING_ENDPOINT_VERIFY_RE = re.compile(
+    r"^Warning: could not verify this endpoint via (.+)\. Hermes will still save it\.$"
+)
+_IF_SERVER_EXPECTS_V1_RE = re.compile(
+    r"^\s*If this server expects /v1 in the path, try base URL: (.+)$"
+)
+_IF_V1_SHOULD_NOT_BE_RE = re.compile(
+    r"^\s*If /v1 should not be in the base URL, try: (.+)$"
+)
 _PROVIDER_LINE_RE = re.compile(r"^Provider: (.+) \((.+)\)$")
 _LOGIN_FAILED_RE = re.compile(r"^Login failed: (.+)$")
 _SESSION_EXPIRED_RE = re.compile(r"^Session expired: (.+)$")
@@ -486,6 +518,29 @@ def zh(text: str | None) -> str | None:
     match = _MODEL_SET_RE.match(normalized)
     if match:
         return f"模型已设置为：{match.group(1)}"
+
+    match = _VERIFIED_ENDPOINT_RE.match(normalized)
+    if match:
+        return f"已通过 {match.group(1)} 验证端点（可见 {match.group(2)} 个模型）"
+
+    match = _WARNING_ENDPOINT_FALLBACK_RE.match(normalized)
+    if match:
+        return (
+            f"警告：端点验证是在 {match.group(1)}/models 成功的，"
+            "而不是你输入的精确 URL。将保存可正常工作的基础 URL。"
+        )
+
+    match = _WARNING_ENDPOINT_VERIFY_RE.match(normalized)
+    if match:
+        return f"警告：无法通过 {match.group(1)} 验证这个端点。Hermes 仍会保存它。"
+
+    match = _IF_SERVER_EXPECTS_V1_RE.match(normalized)
+    if match:
+        return f"  如果这个服务要求路径里带 /v1，可以尝试基础 URL：{match.group(1)}"
+
+    match = _IF_V1_SHOULD_NOT_BE_RE.match(normalized)
+    if match:
+        return f"  如果基础 URL 不该包含 /v1，可以尝试：{match.group(1)}"
 
     match = _PROVIDER_LINE_RE.match(normalized)
     if match:
