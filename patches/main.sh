@@ -172,8 +172,6 @@ prompt_patch_version_selection() {
   echo "[3] Hermes Agent 中文汉化（针对 Releases v0.13.0）" >/dev/tty
   echo "[4] Hermes Agent 中文汉化（针对 Releases v0.12.0）" >/dev/tty
   echo "[5] Hermes Agent 中文汉化（针对 Releases v0.11.0）" >/dev/tty
-  echo "[6] Hermes Agent 中文汉化（针对 Releases v0.10.0）" >/dev/tty
-  echo "[7] Hermes Agent 中文汉化（针对 Releases v0.9.0）" >/dev/tty
   echo "" >/dev/tty
   prompt_via_tty patch_version_selection "默认：1 > "
 
@@ -183,8 +181,6 @@ prompt_patch_version_selection() {
     3) SELECTED_PATCH_VERSION="0.13" ;;
     4) SELECTED_PATCH_VERSION="0.12" ;;
     5) SELECTED_PATCH_VERSION="0.11" ;;
-    6) SELECTED_PATCH_VERSION="0.10" ;;
-    7) SELECTED_PATCH_VERSION="0.9" ;;
     *)
       echo "⚠️ 输入无效，已默认选择最新汉化版本。" >/dev/tty
       SELECTED_PATCH_VERSION="$DEFAULT_PATCH_VERSION"
