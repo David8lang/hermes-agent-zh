@@ -16,7 +16,7 @@ HERMES_ZH_MISMATCH_ACTION="${HERMES_ZH_MISMATCH_ACTION:-}"
 HERMES_ZH_IMPORT_EXISTING_CONFIG="${HERMES_ZH_IMPORT_EXISTING_CONFIG:-}"
 INSTALL_DIR="$HOME/.hermes/hermes-agent"
 PATCH_REPO="https://raw.githubusercontent.com/David8lang/hermes-agent-zh/main"
-DEFAULT_PATCH_VERSION="0.15"
+DEFAULT_PATCH_VERSION="0.16"
 GITHUB_SLOW_THRESHOLD_SECONDS="${HERMES_ZH_GITHUB_SLOW_THRESHOLD_SECONDS:-6}"
 SELECTED_PATCH_VERSION=""
 USER_DATA_PATHS="
@@ -146,6 +146,9 @@ patch_version_from_hermes_version() {
     0.15.*)
       printf '%s\n' "0.15"
       ;;
+    0.16.*)
+      printf '%s\n' "0.16"
+      ;;
     *)
       return 1
       ;;
@@ -167,20 +170,20 @@ prompt_patch_version_selection() {
   fi
 
   echo "请选择要安装的汉化版本：" >/dev/tty
-  echo "[1] Hermes Agent 中文汉化（针对 Releases v0.15.1）" >/dev/tty
-  echo "[2] Hermes Agent 中文汉化（针对 Releases v0.14.0）" >/dev/tty
-  echo "[3] Hermes Agent 中文汉化（针对 Releases v0.13.0）" >/dev/tty
-  echo "[4] Hermes Agent 中文汉化（针对 Releases v0.12.0）" >/dev/tty
-  echo "[5] Hermes Agent 中文汉化（针对 Releases v0.11.0）" >/dev/tty
+  echo "[1] Hermes Agent 中文汉化（针对 Releases v0.16.0）" >/dev/tty
+  echo "[2] Hermes Agent 中文汉化（针对 Releases v0.15.1）" >/dev/tty
+  echo "[3] Hermes Agent 中文汉化（针对 Releases v0.14.0）" >/dev/tty
+  echo "[4] Hermes Agent 中文汉化（针对 Releases v0.13.0）" >/dev/tty
+  echo "[5] Hermes Agent 中文汉化（针对 Releases v0.12.0）" >/dev/tty
   echo "" >/dev/tty
   prompt_via_tty patch_version_selection "默认：1 > "
 
   case "${patch_version_selection:-1}" in
-    ""|1) SELECTED_PATCH_VERSION="0.15" ;;
-    2) SELECTED_PATCH_VERSION="0.14" ;;
-    3) SELECTED_PATCH_VERSION="0.13" ;;
-    4) SELECTED_PATCH_VERSION="0.12" ;;
-    5) SELECTED_PATCH_VERSION="0.11" ;;
+    ""|1) SELECTED_PATCH_VERSION="0.16" ;;
+    2) SELECTED_PATCH_VERSION="0.15" ;;
+    3) SELECTED_PATCH_VERSION="0.14" ;;
+    4) SELECTED_PATCH_VERSION="0.13" ;;
+    5) SELECTED_PATCH_VERSION="0.12" ;;
     *)
       echo "⚠️ 输入无效，已默认选择最新汉化版本。" >/dev/tty
       SELECTED_PATCH_VERSION="$DEFAULT_PATCH_VERSION"
